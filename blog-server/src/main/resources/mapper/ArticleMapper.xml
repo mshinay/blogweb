@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.boot.blogserver.mapper.ArticleMapper">
+    <select id="pageQuery" resultType="com.blog.entry.Article">
+        select article.*,user.username  from article join user on user.id= article.author_id
+        <where>
+
+            <if test="authorId != null">
+                author_id = #{authorId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND  (
+                title LIKE CONCAT('%', #{keyword}, '%')
+                OR content LIKE CONCAT('%', #{keyword}, '%')
+                OR user.username LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+
+        </where>
+                 order by create_time desc
+    </select>
+
+    <update id="update" parameterType="com.blog.entry.Article">
+        update article
+        <set>
+            <if test="title !=null">title = #{title},</if>
+            <if test="content !=null">content = #{content},</if>
+            <if test="authorId !=null">author_id = #{authorId},</if>
+            <if test="status !=null">status = #{status},</if>
+            <if test="createTime !=null">create_time = #{createTime},</if>
+            <if test="updateTime !=null">update_time = #{updateTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <select id="getArticleByIds" resultType="com.blog.entry.Article">
+        SELECT * FROM article WHERE id IN
+        <foreach collection="articleIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+</mapper>
