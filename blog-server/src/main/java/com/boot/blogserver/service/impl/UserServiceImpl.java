@@ -59,8 +59,8 @@ public class UserServiceImpl implements UserService {
 
         User user = new User();
         BeanUtils.copyProperties(userRegisterDTO, user);
-        user.setRole(RoleConstant.ROLE_USER);
-        user.setCreateTime(LocalDateTime.now());
+        user.setRole(RoleConstant.USER);
+        user.setCreatedTime(LocalDateTime.now());
 
         //写入数据库
         userMapper.save(user);

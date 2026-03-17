@@ -1,6 +1,6 @@
 package com.boot.blogserver.service.impl;
 
-import com.blog.constant.ArticleConstant;
+import com.blog.constant.CommentStatusConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.CommentListDTO;
 import com.blog.dto.CommentUpdateDTO;
@@ -48,8 +48,8 @@ public class CommentServiceImpl implements CommentService {
         BeanUtils.copyProperties(commentUploadDTO, comment);
         comment.setUserId(BaseContext.getCurrentId());
         log.info("{}",BaseContext.getCurrentId());
-        comment.setStatus(ArticleConstant.VISIABLE);
-        comment.setCreateTime(LocalDateTime.now());
+        comment.setStatus(CommentStatusConstant.STATUS_NORMAL);
+        comment.setCreatedTime(LocalDateTime.now());
         commentMapper.save(comment);
     }
 
@@ -70,7 +70,7 @@ public class CommentServiceImpl implements CommentService {
             CommentPreviewVO commentPreviewVO = new CommentPreviewVO();
             BeanUtils.copyProperties(comment, commentPreviewVO);
             commentPreviewVO.setUserName(userMapper.getNameById(comment.getUserId()));
-            if(commentPreviewVO.getStatus()==ArticleConstant.VISIABLE) {
+            if(commentPreviewVO.getStatus()==CommentStatusConstant.STATUS_NORMAL) {
                 previewVOS.add(commentPreviewVO);
             }
         });
@@ -91,7 +91,7 @@ public class CommentServiceImpl implements CommentService {
         }
         comment = new Comment();
         comment.setId(id);
-        comment.setStatus(ArticleConstant.UNVISIABLE);
+        comment.setStatus(CommentStatusConstant.STATUS_DELETED);
         log.info("当前状态{}",comment);
         commentMapper.update(comment);
     }
@@ -142,6 +142,7 @@ public class CommentServiceImpl implements CommentService {
             commentVO.setUserName(userNameMap.get(comment.getUserId()));
             commentVO.setUserName("哈哈");
 
+
             // 分组逻辑，computeIfAbsent 避免 if 判断
             AdminCommentManageVO group = groupedMap.computeIfAbsent(comment.getArticleId(), id -> {
                 AdminCommentManageVO vo = new AdminCommentManageVO();
@@ -170,12 +171,12 @@ public class CommentServiceImpl implements CommentService {
         Integer currentStatus = comment.getStatus();
         Integer newStatus;
 
-        if (ArticleConstant.VISIABLE.equals(currentStatus)) {
-            newStatus = ArticleConstant.UNVISIABLE;
-        } else if (ArticleConstant.UNVISIABLE.equals(currentStatus)) {
-            newStatus = ArticleConstant.VISIABLE;
+        if (CommentStatusConstant.STATUS_NORMAL.equals(currentStatus)) {
+            newStatus = CommentStatusConstant.STATUS_HIDDEN;
+        } else if (CommentStatusConstant.STATUS_HIDDEN.equals(currentStatus)) {
+            newStatus = CommentStatusConstant.STATUS_NORMAL;
         } else {
-            throw new RuntimeException("文章状态非法，无法切换");
+            throw new RuntimeException("评论状态非法，无法切换");
         }
 
         comment.setStatus(newStatus);

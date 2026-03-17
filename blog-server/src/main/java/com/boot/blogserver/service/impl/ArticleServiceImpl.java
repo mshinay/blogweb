@@ -1,6 +1,7 @@
 package com.boot.blogserver.service.impl;
 
 import com.blog.constant.ArticleConstant;
+import com.blog.constant.CommentStatusConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.ArticleEditDTO;
 import com.blog.dto.ArticleListDTO;
@@ -43,7 +44,7 @@ public class ArticleServiceImpl implements ArticleService {
      * @param articleUploadDTO
      */
     @Override
-    public void uploadArticle(ArticleUploadDTO articleUploadDTO) {
+    public Long uploadArticle(ArticleUploadDTO articleUploadDTO) {
 
 
 
@@ -51,11 +52,11 @@ public class ArticleServiceImpl implements ArticleService {
         Article article = new Article();
         BeanUtils.copyProperties(articleUploadDTO, article);
         article.setAuthorId(BaseContext.getCurrentId());
-        article.setStatus(ArticleConstant.VISIABLE);
-        article.setCreateTime(LocalDateTime.now());
-        article.setUpdateTime(LocalDateTime.now());
+        article.setStatus(ArticleConstant.STATUS_PUBLISHED);
+        article.setCreatedTime(LocalDateTime.now());
+        article.setUpdatedTime(LocalDateTime.now());
 
-        articleMapper.save(article);
+        return articleMapper.save(article);
     }
 
     /**
@@ -78,7 +79,7 @@ public class ArticleServiceImpl implements ArticleService {
             articlePreviewVO.setAuthorName(userMapper.getNameById(article.getAuthorId()));
             articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
             //确保文章没有被删除
-            if(articlePreviewVO.getStatus()==ArticleConstant.VISIABLE) {
+            if(articlePreviewVO.getStatus()==ArticleConstant.STATUS_PUBLISHED) {
                 previewVOS.add(articlePreviewVO);
             }
         });
@@ -99,7 +100,7 @@ public class ArticleServiceImpl implements ArticleService {
         if (article == null) {
             throw new RuntimeException("该文章不存在");
         }
-        if (article.getStatus().equals(ArticleConstant.UNVISIABLE)) {
+        if (article.getStatus().equals(ArticleConstant.STATUS_DELETED)) {
             throw new RuntimeException("该文章已被删除");
         }
         ArticleDetailVO articleDetailVO = new ArticleDetailVO();
@@ -116,7 +117,7 @@ public class ArticleServiceImpl implements ArticleService {
     public void editArticle(ArticleEditDTO articleEditDTO) {
         Article article = new Article();
         BeanUtils.copyProperties(articleEditDTO, article);
-        article.setUpdateTime(LocalDateTime.now());
+        article.setUpdatedTime(LocalDateTime.now());
         log.info("{}",article);
         articleMapper.update(article);
     }
@@ -134,14 +135,14 @@ public class ArticleServiceImpl implements ArticleService {
         }
         article = new Article();
         article.setId(articleId);
-        article.setStatus(ArticleConstant.UNVISIABLE);
+        article.setStatus(ArticleConstant.STATUS_DELETED);
 
         int updated = articleMapper.update(article);
         if (updated == 0) {
             throw new RuntimeException("文章状态更新失败");
         }
 
-        commentMapper.updateStatus(articleId,ArticleConstant.UNVISIABLE);
+        commentMapper.updateStatus(articleId, mapArticleStatusToCommentStatus(ArticleConstant.STATUS_DELETED));
     }
 
     @Transactional
@@ -154,10 +155,10 @@ public class ArticleServiceImpl implements ArticleService {
         Integer currentStatus = article.getStatus();
         Integer newStatus;
 
-        if (ArticleConstant.VISIABLE.equals(currentStatus)) {
-            newStatus = ArticleConstant.UNVISIABLE;
-        } else if (ArticleConstant.UNVISIABLE.equals(currentStatus)) {
-            newStatus = ArticleConstant.VISIABLE;
+        if (ArticleConstant.STATUS_PUBLISHED.equals(currentStatus)) {
+            newStatus = ArticleConstant.STATUS_DRAFT;
+        } else if (ArticleConstant.STATUS_DRAFT.equals(currentStatus)) {
+            newStatus = ArticleConstant.STATUS_PUBLISHED;
         } else {
             throw new RuntimeException("文章状态非法，无法切换");
         }
@@ -168,7 +169,7 @@ public class ArticleServiceImpl implements ArticleService {
         if (updated == 0) {
             throw new RuntimeException("文章状态更新失败");
         }
-        commentMapper.updateStatus(id,newStatus);
+        commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
     }
 
     @Override
@@ -193,5 +194,18 @@ public class ArticleServiceImpl implements ArticleService {
         return new PageResult(pages.getTotal(), previewVOS);
     }
 
+
+    private Integer mapArticleStatusToCommentStatus(Integer articleStatus) {
+        if (ArticleConstant.STATUS_DELETED.equals(articleStatus)) {
+            return CommentStatusConstant.STATUS_DELETED;
+        }
+        if (ArticleConstant.STATUS_PUBLISHED.equals(articleStatus)) {
+            return CommentStatusConstant.STATUS_NORMAL;
+        }
+        if (ArticleConstant.STATUS_DRAFT.equals(articleStatus)) {
+            return CommentStatusConstant.STATUS_HIDDEN;
+        }
+        throw new RuntimeException("文章状态非法，无法映射评论状态");
+    }
 
 }

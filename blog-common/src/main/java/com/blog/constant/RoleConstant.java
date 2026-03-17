@@ -1,6 +1,6 @@
 package com.blog.constant;
 
 public class RoleConstant {
-    public static final Integer ROLE_ADMIN = 0;
-    public static final Integer ROLE_USER = 1;
+    public static final Integer ADMIN = 0;
+    public static final Integer USER = 1;
 }
