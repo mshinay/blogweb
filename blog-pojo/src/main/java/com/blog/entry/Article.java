@@ -16,20 +16,39 @@ public class Article implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private Long id;//文章id
+    private Long id;
 
-    private String title;//标题
+    private String title;
 
-    private String content;//正文
+    private String slug;
 
-    private Long authorId;//作者id
+    private String summary;
 
-    private Integer status;//状态 1:可视 0:不可视
+    private String coverUrl;
 
-    private LocalDateTime createTime;//创建时间
+    private String content;
 
-    private LocalDateTime updateTime;//修改时间
+    private String contentPlain;
 
+    private String contentType;
+
+    private Long authorId;
+
+    private Long categoryId;
+
+    private Integer status;
+
+    private Integer isTop;
+
+    private Integer allowComment;
+
+    private LocalDateTime publishTime;
+
+    private Integer wordCount;
+
+    private LocalDateTime createdTime;
+
+    private LocalDateTime updatedTime;
 
 }
 

@@ -12,29 +12,17 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User implements Serializable {
+public class Tag implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private Long id;
 
-    private String username;
+    private String name;
 
-    private String password;
-
-    private String email;
-
-    private String nickname;
-
-    private String avatarUrl;
-
-    private String bio;
-
-    private Integer role;
+    private String slug;
 
     private Integer status;
-
-    private LocalDateTime lastLoginTime;
 
     private LocalDateTime createdTime;
 

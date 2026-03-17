@@ -15,17 +15,28 @@ import java.time.LocalDateTime;
 public class Comment implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long id;//文章id
+    private Long id;
 
-    private Long articleId;//文章id
+    private Long articleId;
 
-    private String content;//正文
+    private Long userId;
 
-    private Long userId;//作者id
+    private Long parentId;
 
-    private Integer status;//状态 1:可视 0:不可视
+    private Long rootId;
 
-    private LocalDateTime createTime;//创建时间
+    private Long replyUserId;
 
+    private Long replyToCommentId;
+
+    private String content;
+
+    private Integer status;
+
+    private Integer likeCount;
+
+    private LocalDateTime createdTime;
+
+    private LocalDateTime updatedTime;
 
 }

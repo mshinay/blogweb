@@ -12,29 +12,19 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User implements Serializable {
+public class ArticleStats implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private Long id;
+    private Long articleId;
 
-    private String username;
+    private Long viewCount;
 
-    private String password;
+    private Long likeCount;
 
-    private String email;
+    private Long commentCount;
 
-    private String nickname;
-
-    private String avatarUrl;
-
-    private String bio;
-
-    private Integer role;
-
-    private Integer status;
-
-    private LocalDateTime lastLoginTime;
+    private Long favoriteCount;
 
     private LocalDateTime createdTime;
 
