@@ -9,6 +9,7 @@ import com.blog.dto.CommentUploadDTO;
 import com.blog.entry.Article;
 import com.blog.entry.Comment;
 import com.blog.entry.User;
+import com.blog.exception.BusinessException;
 import com.blog.result.PageResult;
 import com.blog.vo.AdminCommentListVO;
 import com.blog.vo.CommentPreviewVO;
@@ -90,7 +91,7 @@ public class CommentServiceImpl implements CommentService {
     public void deleteComment(Long id) {
         Comment comment = commentMapper.getById(id);
         if(comment==null) {
-            throw new RuntimeException("该评论不存在");
+            throw BusinessException.notFound("该评论不存在");
         }
         comment = new Comment();
         comment.setId(id);
@@ -103,7 +104,7 @@ public class CommentServiceImpl implements CommentService {
     public void updateComment(CommentUpdateDTO commentUpdateDTO) {
         Comment comment = commentMapper.getById(commentUpdateDTO.getId());
         if(comment==null) {
-            throw new RuntimeException("该评论不存在");
+            throw BusinessException.notFound("该评论不存在");
         }
         comment = new Comment();
         comment.setId(commentUpdateDTO.getId());
@@ -159,7 +160,7 @@ public class CommentServiceImpl implements CommentService {
     public void editStatus(Long id) {
         Comment comment = commentMapper.getById(id);
         if(comment==null) {
-            throw new RuntimeException("该评论不存在");
+            throw BusinessException.notFound("该评论不存在");
         }
         Integer currentStatus = comment.getStatus();
         Integer newStatus;
@@ -169,7 +170,7 @@ public class CommentServiceImpl implements CommentService {
         } else if (CommentStatusConstant.STATUS_HIDDEN.equals(currentStatus)) {
             newStatus = CommentStatusConstant.STATUS_NORMAL;
         } else {
-            throw new RuntimeException("评论状态非法，无法切换");
+            throw new BusinessException("评论状态非法，无法切换");
         }
 
         comment.setStatus(newStatus);

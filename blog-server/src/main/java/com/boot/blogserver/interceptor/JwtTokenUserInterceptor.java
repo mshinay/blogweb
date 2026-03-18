@@ -1,6 +1,7 @@
 package com.boot.blogserver.interceptor;
 
 import com.blog.context.BaseContext;
+import com.blog.exception.UnauthorizedException;
 import com.blog.properties.JwtProperties;
 import com.blog.utils.JwtUtil;
 import jakarta.annotation.Resource;
@@ -49,9 +50,8 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
             //3、通过，放行
             return true;
         } catch (Exception ex) {
-            //4、不通过，响应401状态码
-            response.setStatus(401);
-            return false;
+            log.warn("jwt校验失败", ex);
+            throw new UnauthorizedException("登录状态无效或已过期");
         }
     }
 }

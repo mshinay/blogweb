@@ -1,5 +1,6 @@
 package com.boot.blogserver.controller;
 
+import com.blog.exception.BusinessException;
 import com.blog.result.Result;
 import com.blog.utils.AliOssUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -30,21 +31,25 @@ public class CommonController {
     @PostMapping("/upload")
     public Result<String> upload(MultipartFile file)  {
         log.info("上传文件");
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("上传文件不能为空");
+        }
 
         //获取原始文件名
         String filename = file.getOriginalFilename();
+        if (filename == null || !filename.contains(".")) {
+            throw new BusinessException("上传文件格式非法");
+        }
         //获取文件扩展名
         String extension = filename.substring(filename.lastIndexOf("."));
         //通过UUID生成唯一标识码，防止重名
         String objectName = UUID.randomUUID().toString() + extension;
 
-        //
-        String returnstr;
         try {
-         returnstr = ossUtil.upload(file.getBytes(), objectName);
+            String returnstr = ossUtil.upload(file.getBytes(), objectName);
+            return Result.success(returnstr);
         } catch (IOException e) {
-            returnstr = "上传失败";
+            throw new BusinessException("上传失败");
         }
-        return Result.success(returnstr);
     }
 }

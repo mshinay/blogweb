@@ -11,6 +11,7 @@ import com.blog.entry.Article;
 import com.blog.entry.ArticleStats;
 import com.blog.entry.Category;
 import com.blog.entry.User;
+import com.blog.exception.BusinessException;
 import com.blog.result.PageResult;
 import com.blog.utils.ArticleUtil;
 import com.blog.vo.ArticleAdminListVO;
@@ -117,7 +118,7 @@ public class ArticleServiceImpl implements ArticleService {
     public ArticleDetailVO getArticleDetail(Long articleId) {
         Article article = articleMapper.getPublishedById(articleId);
         if (article == null) {
-            throw new RuntimeException("该文章不存在");
+            throw BusinessException.notFound("该文章不存在");
         }
         ArticleDetailVO articleDetailVO = new ArticleDetailVO();
         BeanUtils.copyProperties(article, articleDetailVO);
@@ -152,7 +153,7 @@ public class ArticleServiceImpl implements ArticleService {
     public void deleteArticle(Long articleId) {
         Article article = articleMapper.getById(articleId);
         if (article == null) {
-            throw new RuntimeException("该文章不存在");
+            throw BusinessException.notFound("该文章不存在");
         }
         article = new Article();
         article.setId(articleId);
@@ -160,7 +161,7 @@ public class ArticleServiceImpl implements ArticleService {
 
         int updated = articleMapper.update(article);
         if (updated == 0) {
-            throw new RuntimeException("文章状态更新失败");
+            throw new BusinessException("文章状态更新失败");
         }
 
         commentMapper.updateStatus(articleId, mapArticleStatusToCommentStatus(ArticleConstant.STATUS_DELETED));
@@ -171,7 +172,7 @@ public class ArticleServiceImpl implements ArticleService {
     public void editStatus(Long id) {
         Article article = articleMapper.getById(id);
         if (article == null) {
-            throw new RuntimeException("该文章不存在");
+            throw BusinessException.notFound("该文章不存在");
         }
         Integer currentStatus = article.getStatus();
         Integer newStatus;
@@ -181,14 +182,14 @@ public class ArticleServiceImpl implements ArticleService {
         } else if (ArticleConstant.STATUS_DRAFT.equals(currentStatus)) {
             newStatus = ArticleConstant.STATUS_PUBLISHED;
         } else {
-            throw new RuntimeException("文章状态非法，无法切换");
+            throw new BusinessException("文章状态非法，无法切换");
         }
 
         article.setStatus(newStatus);
 
         int updated = articleMapper.update(article);
         if (updated == 0) {
-            throw new RuntimeException("文章状态更新失败");
+            throw new BusinessException("文章状态更新失败");
         }
         commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
     }
@@ -265,7 +266,7 @@ public class ArticleServiceImpl implements ArticleService {
         if (ArticleConstant.STATUS_DRAFT.equals(articleStatus)) {
             return CommentStatusConstant.STATUS_HIDDEN;
         }
-        throw new RuntimeException("文章状态非法，无法映射评论状态");
+        throw new BusinessException("文章状态非法，无法映射评论状态");
     }
 
 }

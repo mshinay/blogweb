@@ -8,8 +8,6 @@ import com.blog.properties.JwtProperties;
 import com.blog.utils.JwtUtil;
 import com.blog.vo.UserLoginVO;
 import com.boot.blogserver.service.UserService;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -37,7 +35,7 @@ public class UserController {
      */
     @PostMapping("/login")
     public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO) {
-        log.info("用户登录{}",userLoginDTO);
+        log.info("用户登录 username={}", userLoginDTO.getUsername());
         User user= userService.login(userLoginDTO);
         //登录成功后，生成jwt
         Map<String, Object> claims=new HashMap<>();
@@ -60,7 +58,7 @@ public class UserController {
      */
     @PostMapping("/register")
     public Result<UserLoginVO> register(@RequestBody UserRegisterDTO userRegisterDTO) {
-        log.info("用户注册{}",userRegisterDTO);
+        log.info("用户注册 username={}, email={}", userRegisterDTO.getUsername(), userRegisterDTO.getEmail());
         User user = userService.register(userRegisterDTO);
 
         //登录成功后，生成jwt
@@ -78,7 +76,7 @@ public class UserController {
 
     @PostMapping("/update")
     public Result<UserLoginVO> update(@RequestBody UserUpdateDTO userUpdateDTO) {
-        log.info("用户更新{}",userUpdateDTO);
+        log.info("用户更新 id={}", userUpdateDTO.getId());
         User user = userService.updte(userUpdateDTO);
 
         //登录成功后，生成jwt
