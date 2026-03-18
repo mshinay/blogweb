@@ -30,6 +30,9 @@ public interface ArticleMapper {
     @Select("select * from article where id=#{id}")
     Article getById(Long id);
 
+    @Select("select * from article where id = #{id} and status = 1")
+    Article getPublishedById(Long id);
+
     @Select("select * from article where slug = #{slug}")
     Article getBySlug(String slug);
 

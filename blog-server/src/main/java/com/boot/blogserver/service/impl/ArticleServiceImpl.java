@@ -8,13 +8,19 @@ import com.blog.dto.ArticleEditDTO;
 import com.blog.dto.ArticleListDTO;
 import com.blog.dto.ArticleUploadDTO;
 import com.blog.entry.Article;
+import com.blog.entry.ArticleStats;
+import com.blog.entry.Category;
 import com.blog.entry.User;
 import com.blog.result.PageResult;
 import com.blog.utils.ArticleUtil;
+import com.blog.vo.ArticleAdminListVO;
 import com.blog.vo.ArticleDetailVO;
 import com.blog.vo.ArticlePreviewVO;
 import com.blog.vo.UserProfileVO;
 import com.boot.blogserver.mapper.ArticleMapper;
+import com.boot.blogserver.mapper.ArticleStatsMapper;
+import com.boot.blogserver.mapper.ArticleTagMapper;
+import com.boot.blogserver.mapper.CategoryMapper;
 import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.ArticleService;
@@ -28,7 +34,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -40,6 +52,12 @@ public class ArticleServiceImpl implements ArticleService {
     private UserMapper userMapper;
     @Autowired
     private CommentMapper commentMapper;
+    @Autowired
+    private ArticleTagMapper articleTagMapper;
+    @Autowired
+    private CategoryMapper categoryMapper;
+    @Autowired
+    private ArticleStatsMapper articleStatsMapper;
 
     /**
      * 上传文章
@@ -72,7 +90,8 @@ public class ArticleServiceImpl implements ArticleService {
         PageHelper.startPage(articleListDTO.getPage(), articleListDTO.getPageSize());
 
         //Page<>是由pagehelper封装的返回集合
-        Page<Article> pages = articleMapper.pageQueryPublished(articleListDTO, null);
+        Set<Long> articleIds = resolveArticleIdsByTagId(articleListDTO.getTagId());
+        Page<Article> pages = articleMapper.pageQueryPublished(articleListDTO, articleIds);
         List<ArticlePreviewVO> previewVOS = new ArrayList<>();
         pages.getResult().forEach(article -> {
             ArticlePreviewVO articlePreviewVO = new ArticlePreviewVO();
@@ -96,12 +115,9 @@ public class ArticleServiceImpl implements ArticleService {
      */
     @Override
     public ArticleDetailVO getArticleDetail(Long articleId) {
-        Article article = articleMapper.getById(articleId);
+        Article article = articleMapper.getPublishedById(articleId);
         if (article == null) {
             throw new RuntimeException("该文章不存在");
-        }
-        if (!ArticleConstant.STATUS_PUBLISHED.equals(article.getStatus())) {
-            throw new RuntimeException("该文章不可见");
         }
         ArticleDetailVO articleDetailVO = new ArticleDetailVO();
         BeanUtils.copyProperties(article, articleDetailVO);
@@ -183,22 +199,59 @@ public class ArticleServiceImpl implements ArticleService {
         PageHelper.startPage(articleAdminListDTO.getPage(), articleAdminListDTO.getPageSize());
 
         //Page<>是由pagehelper封装的返回集合
-        Page<Article> pages = articleMapper.pageQueryAdmin(articleAdminListDTO, null);
-        List<ArticlePreviewVO> previewVOS = new ArrayList<>();
-        pages.getResult().forEach(article -> {
-            ArticlePreviewVO articlePreviewVO = new ArticlePreviewVO();
-            BeanUtils.copyProperties(article, articlePreviewVO);
-            articlePreviewVO.setAuthorName(userMapper.getNameById(article.getAuthorId()));
-            if (articlePreviewVO.getSummary() == null || articlePreviewVO.getSummary().isBlank()) {
-                articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
-            }
-
-                previewVOS.add(articlePreviewVO);
-
-        });
+        Set<Long> articleIds = resolveArticleIdsByTagId(articleAdminListDTO.getTagId());
+        Page<Article> pages = articleMapper.pageQueryAdmin(articleAdminListDTO, articleIds);
+        List<ArticleAdminListVO> previewVOS = buildAdminArticleList(pages.getResult());
         log.info("文章数{}",pages.getTotal());
         log.info("文章集{}",previewVOS);
         return new PageResult(pages.getTotal(), previewVOS);
+    }
+
+    private Set<Long> resolveArticleIdsByTagId(Long tagId) {
+        if (tagId == null) {
+            return null;
+        }
+        List<Long> articleIds = articleTagMapper.listArticleIdsByTagId(tagId);
+        return new LinkedHashSet<>(articleIds);
+    }
+
+    private List<ArticleAdminListVO> buildAdminArticleList(List<Article> articles) {
+        if (articles.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> authorIds = articles.stream().map(Article::getAuthorId).collect(Collectors.toSet());
+        Set<Long> categoryIds = articles.stream()
+                .map(Article::getCategoryId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> articleIds = articles.stream().map(Article::getId).collect(Collectors.toSet());
+
+        Map<Long, String> authorNameMap = userMapper.getUsersByIds(authorIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        Map<Long, String> categoryNameMap = categoryIds.isEmpty()
+                ? Collections.emptyMap()
+                : categoryMapper.getByIds(categoryIds).stream()
+                .collect(Collectors.toMap(Category::getId, Category::getName));
+        Map<Long, ArticleStats> statsMap = articleStatsMapper.getByArticleIds(articleIds).stream()
+                .collect(Collectors.toMap(ArticleStats::getArticleId, Function.identity()));
+
+        List<ArticleAdminListVO> records = new ArrayList<>();
+        for (Article article : articles) {
+            ArticleAdminListVO vo = new ArticleAdminListVO();
+            BeanUtils.copyProperties(article, vo);
+            vo.setAuthorName(authorNameMap.get(article.getAuthorId()));
+            vo.setCategoryName(categoryNameMap.get(article.getCategoryId()));
+
+            ArticleStats stats = statsMap.get(article.getId());
+            if (stats != null) {
+                vo.setViewCount(stats.getViewCount());
+                vo.setCommentCount(stats.getCommentCount());
+            }
+
+            records.add(vo);
+        }
+        return records;
     }
 
 
