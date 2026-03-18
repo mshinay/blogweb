@@ -4,13 +4,17 @@ import com.blog.dto.*;
 import com.blog.result.PageResult;
 import com.blog.result.Result;
 import com.boot.blogserver.service.CommentService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/comment")
 @Slf4j
+@Validated
 public class CommentController {
     @Autowired
     private CommentService commentService;
@@ -21,7 +25,7 @@ public class CommentController {
      * @param commentUploadDTO
      */
     @PostMapping("/upload")
-    public Result uploadComment(@RequestBody CommentUploadDTO commentUploadDTO) {
+    public Result uploadComment(@Valid @RequestBody CommentUploadDTO commentUploadDTO) {
         log.info("评论上传{}", commentUploadDTO);
         commentService.uploadComment(commentUploadDTO);
         return Result.success();
@@ -33,7 +37,7 @@ public class CommentController {
      * @return
      */
     @GetMapping("/list")
-    public Result<PageResult> listComment(CommentListDTO commentListDTO) {
+    public Result<PageResult> listComment(@Valid CommentListDTO commentListDTO) {
         log.info("分页查询{}", commentListDTO);
         PageResult results = commentService.commentList(commentListDTO);
         return Result.success(results);
@@ -45,7 +49,7 @@ public class CommentController {
      * @return
      */
     @GetMapping("/user")
-    public Result<PageResult> userComment(CommentListDTO commentListDTO) {
+    public Result<PageResult> userComment(@Valid CommentListDTO commentListDTO) {
         log.info("用户评论查询{}", commentListDTO);
         PageResult results = commentService.commentList(commentListDTO);
         return Result.success(results);
@@ -57,7 +61,7 @@ public class CommentController {
      * @return
      */
     @GetMapping("/user/search")
-    public Result<PageResult> userSearchComment(CommentListDTO commentListDTO) {
+    public Result<PageResult> userSearchComment(@Valid CommentListDTO commentListDTO) {
         log.info("用户评论搜索{}", commentListDTO);
         PageResult results = commentService.commentList(commentListDTO);
         return Result.success(results);
@@ -69,14 +73,14 @@ public class CommentController {
      * @return
      */
     @DeleteMapping("/{id}")
-    public Result deleteComment(@PathVariable Long id) {
+    public Result deleteComment(@Positive(message = "评论ID必须大于0") @PathVariable Long id) {
         log.info("用户删除评论{}", id);
         commentService.deleteComment(id);
         return Result.success();
     }
 
     @PutMapping("/update")
-    public Result updateComment(@RequestBody CommentUpdateDTO commentUpdateDTO) {
+    public Result updateComment(@Valid @RequestBody CommentUpdateDTO commentUpdateDTO) {
         log.info("用户评论更新{}", commentUpdateDTO);
         commentService.updateComment(commentUpdateDTO);
         return Result.success();
@@ -88,21 +92,21 @@ public class CommentController {
      * @return
      */
     @GetMapping("/admin/search")
-    public Result<PageResult> adminSearchManageComment(CommentAdminListDTO commentAdminListDTO) {
+    public Result<PageResult> adminSearchManageComment(@Valid CommentAdminListDTO commentAdminListDTO) {
         log.info("管理员评论平铺查询{}", commentAdminListDTO);
         PageResult results = commentService.commentAdminList(commentAdminListDTO);
         return Result.success(results);
     }
 
     @GetMapping("/admin/list")
-    public Result<PageResult> adminListManageComment(CommentAdminListDTO commentAdminListDTO) {
+    public Result<PageResult> adminListManageComment(@Valid CommentAdminListDTO commentAdminListDTO) {
         log.info("管理员评论平铺列表{}", commentAdminListDTO);
         PageResult results = commentService.commentAdminList(commentAdminListDTO);
         return Result.success(results);
     }
 
     @PatchMapping("/admin/status/{id}")
-    public Result adminEditStatus(@PathVariable Long id) {
+    public Result adminEditStatus(@Positive(message = "评论ID必须大于0") @PathVariable Long id) {
         log.info("管理员修改评论状况{}", id);
         commentService.editStatus(id);
         return Result.success();

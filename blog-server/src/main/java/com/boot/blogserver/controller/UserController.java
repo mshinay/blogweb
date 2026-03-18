@@ -9,9 +9,12 @@ import com.blog.utils.JwtUtil;
 import com.blog.vo.UserLoginVO;
 import com.boot.blogserver.service.UserService;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import com.blog.result.Result;
 
@@ -21,6 +24,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/user")
 @Slf4j
+@Validated
 public class UserController {
 
     @Autowired
@@ -34,7 +38,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/login")
-    public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO) {
+    public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO userLoginDTO) {
         log.info("用户登录 username={}", userLoginDTO.getUsername());
         User user= userService.login(userLoginDTO);
         //登录成功后，生成jwt
@@ -57,7 +61,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/register")
-    public Result<UserLoginVO> register(@RequestBody UserRegisterDTO userRegisterDTO) {
+    public Result<UserLoginVO> register(@Valid @RequestBody UserRegisterDTO userRegisterDTO) {
         log.info("用户注册 username={}, email={}", userRegisterDTO.getUsername(), userRegisterDTO.getEmail());
         User user = userService.register(userRegisterDTO);
 
@@ -75,7 +79,7 @@ public class UserController {
     }
 
     @PostMapping("/update")
-    public Result<UserLoginVO> update(@RequestBody UserUpdateDTO userUpdateDTO) {
+    public Result<UserLoginVO> update(@Valid @RequestBody UserUpdateDTO userUpdateDTO) {
         log.info("用户更新 id={}", userUpdateDTO.getId());
         User user = userService.updte(userUpdateDTO);
 
@@ -94,7 +98,7 @@ public class UserController {
     }
 
     @GetMapping("/public/{id}")
-    public Result<UserLoginVO> userInfo(@PathVariable Long id) {
+    public Result<UserLoginVO> userInfo(@Positive(message = "用户ID必须大于0") @PathVariable Long id) {
         log.info("渲染用户信息{}",id);
         User user = userService.userInfo(id);
         UserLoginVO userLoginVO = new UserLoginVO();
