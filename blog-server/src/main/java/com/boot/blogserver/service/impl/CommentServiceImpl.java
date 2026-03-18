@@ -2,6 +2,7 @@ package com.boot.blogserver.service.impl;
 
 import com.blog.constant.CommentStatusConstant;
 import com.blog.context.BaseContext;
+import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
 import com.blog.dto.CommentUpdateDTO;
 import com.blog.dto.CommentUploadDTO;
@@ -9,7 +10,7 @@ import com.blog.entry.Article;
 import com.blog.entry.Comment;
 import com.blog.entry.User;
 import com.blog.result.PageResult;
-import com.blog.vo.AdminCommentManageVO;
+import com.blog.vo.AdminCommentListVO;
 import com.blog.vo.CommentPreviewVO;
 import com.boot.blogserver.mapper.ArticleMapper;
 import com.boot.blogserver.mapper.CommentMapper;
@@ -23,7 +24,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,15 +69,13 @@ public class CommentServiceImpl implements CommentService {
         PageHelper.startPage(commentListDTO.getPage(), commentListDTO.getPageSize());
 
         //Page<>是由pagehelper封装的返回集合
-        Page<Comment> pages = commentMapper.pageQuery(commentListDTO);
+        Page<Comment> pages = commentMapper.pageQueryPublished(commentListDTO);
         List<CommentPreviewVO> previewVOS = new ArrayList<>();
         pages.getResult().forEach(comment -> {
             CommentPreviewVO commentPreviewVO = new CommentPreviewVO();
             BeanUtils.copyProperties(comment, commentPreviewVO);
             commentPreviewVO.setUserName(userMapper.getNameById(comment.getUserId()));
-            if(commentPreviewVO.getStatus()==CommentStatusConstant.STATUS_NORMAL) {
-                previewVOS.add(commentPreviewVO);
-            }
+            previewVOS.add(commentPreviewVO);
         });
         log.info("评论数{}",pages.getTotal());
         log.info("评论集{}",previewVOS);
@@ -110,56 +113,46 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public PageResult commentAdminManageList(CommentListDTO commentListDTO) {
-        // 分页查询评论
-        PageHelper.startPage(commentListDTO.getPage(), commentListDTO.getPageSize());
-        Page<Comment> pages = commentMapper.pageQuery(commentListDTO);
+    public PageResult commentAdminList(CommentAdminListDTO commentAdminListDTO) {
+        PageHelper.startPage(commentAdminListDTO.getPage(), commentAdminListDTO.getPageSize());
+        Page<Comment> pages = commentMapper.pageQueryAdmin(commentAdminListDTO);
 
         List<Comment> comments = pages.getResult();
         if (comments.isEmpty()) {
             return new PageResult(0L, Collections.emptyList());
         }
 
-        // 提取所有 userId 和 articleId
-        Set<Long> userIds = comments.stream().map(Comment::getUserId).collect(Collectors.toSet());
+        Set<Long> userIds = comments.stream()
+                .flatMap(comment -> java.util.stream.Stream.of(comment.getUserId(), comment.getReplyUserId()))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
         Set<Long> articleIds = comments.stream().map(Comment::getArticleId).collect(Collectors.toSet());
 
-
-        // 批量查询用户昵称和文章信息（需你自行实现这两个方法）
-        List<User> users = userMapper.getUsersByIds(userIds);           // Map<userId, userName>
-        List<Article> articles = articleMapper.getArticleByIds(articleIds); // Map<articleId, title>
-        Map<Long,String> userNameMap = users.stream()
+        List<User> users = userMapper.getUsersByIds(userIds);
+        List<Article> articles = articleMapper.getArticleByIds(articleIds);
+        Map<Long, String> userNameMap = users.stream()
                 .collect(Collectors.toMap(User::getId, User::getUsername));
-        Map<Long,String> articleTitleMap = articles.stream()
-                .collect(Collectors.toMap(Article::getId, Article::getTitle));
-        // 构建按文章分组的结果
-        Map<Long, AdminCommentManageVO> groupedMap = new LinkedHashMap<>();
+        Map<Long, Article> articleMap = articles.stream()
+                .collect(Collectors.toMap(Article::getId, article -> article));
 
+        List<AdminCommentListVO> records = new ArrayList<>();
         for (Comment comment : comments) {
-            // 组装评论视图对象
-            CommentPreviewVO commentVO = new CommentPreviewVO();
-            BeanUtils.copyProperties(comment, commentVO);
-            commentVO.setUserName(userNameMap.get(comment.getUserId()));
+            AdminCommentListVO vo = new AdminCommentListVO();
+            BeanUtils.copyProperties(comment, vo);
+            vo.setCommentId(comment.getId());
+            vo.setUserName(userNameMap.get(comment.getUserId()));
+            vo.setReplyUserName(userNameMap.get(comment.getReplyUserId()));
 
+            Article article = articleMap.get(comment.getArticleId());
+            if (article != null) {
+                vo.setArticleTitle(article.getTitle());
+                vo.setArticleStatus(article.getStatus());
+            }
 
-
-            // 分组逻辑，computeIfAbsent 避免 if 判断
-            AdminCommentManageVO group = groupedMap.computeIfAbsent(comment.getArticleId(), id -> {
-                AdminCommentManageVO vo = new AdminCommentManageVO();
-                vo.setArticleId(id);
-                //log.info("ArticleId:{}",id);
-                vo.setArticleTitle(articleTitleMap.getOrDefault(id, "无标题"));
-                //log.info("<UNK>{}",articleTitleMap);
-                //vo.setArticleTitle("null");
-                vo.setComments(new ArrayList<>());
-                //log.info("VO:{}",vo);
-                return vo;
-            });
-
-            group.getComments().add(commentVO);
+            records.add(vo);
         }
 
-        return new PageResult(pages.getTotal(), new ArrayList<>(groupedMap.values()));
+        return new PageResult(pages.getTotal(), records);
     }
 
     @Override

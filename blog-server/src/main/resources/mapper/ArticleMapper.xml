@@ -3,40 +3,108 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.boot.blogserver.mapper.ArticleMapper">
-    <select id="pageQuery" resultType="com.blog.entry.Article">
-        select article.*,user.username  from article join user on user.id= article.author_id
+    <select id="pageQueryPublished" resultType="com.blog.entry.Article">
+        select *
+        from article
         <where>
-
-            <if test="authorId != null">
-                author_id = #{authorId}
+            status = 1
+            <if test="query != null and query.authorId != null">
+                and author_id = #{query.authorId}
             </if>
-            <if test="keyword != null and keyword != ''">
-                AND  (
-                title LIKE CONCAT('%', #{keyword}, '%')
-                OR content LIKE CONCAT('%', #{keyword}, '%')
-                OR user.username LIKE CONCAT('%', #{keyword}, '%')
+            <if test="query != null and query.categoryId != null">
+                and category_id = #{query.categoryId}
+            </if>
+            <if test="query != null and query.slug != null and query.slug != ''">
+                and slug = #{query.slug}
+            </if>
+            <if test="query != null and query.keyword != null and query.keyword != ''">
+                and (
+                title like concat('%', #{query.keyword}, '%')
+                or summary like concat('%', #{query.keyword}, '%')
+                or content like concat('%', #{query.keyword}, '%')
                 )
             </if>
-
+            <if test="articleIds != null and articleIds.size() == 0">
+                and 1 = 0
+            </if>
+            <if test="articleIds != null and articleIds.size() > 0">
+                and id in
+                <foreach collection="articleIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
         </where>
-                 order by create_time desc
+        order by is_top desc, publish_time desc, created_time desc
+    </select>
+
+    <select id="pageQueryAdmin" resultType="com.blog.entry.Article">
+        select *
+        from article
+        <where>
+            <if test="query != null and query.authorId != null">
+                author_id = #{query.authorId}
+            </if>
+            <if test="query != null and query.categoryId != null">
+                and category_id = #{query.categoryId}
+            </if>
+            <if test="query != null and query.status != null">
+                and status = #{query.status}
+            </if>
+            <if test="query != null and query.allowComment != null">
+                and allow_comment = #{query.allowComment}
+            </if>
+            <if test="query != null and query.isTop != null">
+                and is_top = #{query.isTop}
+            </if>
+            <if test="query != null and query.slug != null and query.slug != ''">
+                and slug = #{query.slug}
+            </if>
+            <if test="query != null and query.keyword != null and query.keyword != ''">
+                and (
+                title like concat('%', #{query.keyword}, '%')
+                or summary like concat('%', #{query.keyword}, '%')
+                or content like concat('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="articleIds != null and articleIds.size() == 0">
+                and 1 = 0
+            </if>
+            <if test="articleIds != null and articleIds.size() > 0">
+                and id in
+                <foreach collection="articleIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+        order by updated_time desc, created_time desc
     </select>
 
     <update id="update" parameterType="com.blog.entry.Article">
         update article
         <set>
             <if test="title !=null">title = #{title},</if>
+            <if test="slug !=null">slug = #{slug},</if>
+            <if test="summary !=null">summary = #{summary},</if>
+            <if test="coverUrl !=null">cover_url = #{coverUrl},</if>
             <if test="content !=null">content = #{content},</if>
+            <if test="contentPlain !=null">content_plain = #{contentPlain},</if>
+            <if test="contentType !=null">content_type = #{contentType},</if>
             <if test="authorId !=null">author_id = #{authorId},</if>
+            <if test="categoryId !=null">category_id = #{categoryId},</if>
             <if test="status !=null">status = #{status},</if>
-            <if test="createTime !=null">create_time = #{createTime},</if>
-            <if test="updateTime !=null">update_time = #{updateTime},</if>
+            <if test="isTop !=null">is_top = #{isTop},</if>
+            <if test="allowComment !=null">allow_comment = #{allowComment},</if>
+            <if test="publishTime !=null">publish_time = #{publishTime},</if>
+            <if test="wordCount !=null">word_count = #{wordCount},</if>
+            <if test="updatedTime !=null">updated_time = #{updatedTime},</if>
         </set>
         where id = #{id}
     </update>
 
     <select id="getArticleByIds" resultType="com.blog.entry.Article">
-        SELECT * FROM article WHERE id IN
+        select *
+        from article
+        where id in
         <foreach collection="articleIds" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>

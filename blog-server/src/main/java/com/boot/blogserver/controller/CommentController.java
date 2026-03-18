@@ -84,20 +84,20 @@ public class CommentController {
 
     /**
      * 管理员评论查询
-     * @param commentListDTO
+     * @param commentAdminListDTO
      * @return
      */
     @GetMapping("/admin/search")
-    public Result<PageResult> adminSearchManageComment(CommentListDTO commentListDTO) {
-        log.info("管理员评论聚合查询{}", commentListDTO);
-        PageResult results = commentService.commentAdminManageList(commentListDTO);
+    public Result<PageResult> adminSearchManageComment(CommentAdminListDTO commentAdminListDTO) {
+        log.info("管理员评论平铺查询{}", commentAdminListDTO);
+        PageResult results = commentService.commentAdminList(commentAdminListDTO);
         return Result.success(results);
     }
 
     @GetMapping("/admin/list")
-    public Result<PageResult> adminListManageComment(CommentListDTO commentListDTO) {
-        log.info("管理员评论聚合列表{}", commentListDTO);
-        PageResult results = commentService.commentAdminManageList(commentListDTO);
+    public Result<PageResult> adminListManageComment(CommentAdminListDTO commentAdminListDTO) {
+        log.info("管理员评论平铺列表{}", commentAdminListDTO);
+        PageResult results = commentService.commentAdminList(commentAdminListDTO);
         return Result.success(results);
     }
 

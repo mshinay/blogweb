@@ -9,9 +9,13 @@
             <if test="username !=null">username = #{username},</if>
             <if test="password !=null">password = #{password},</if>
             <if test="email !=null">email = #{email},</if>
+            <if test="nickname !=null">nickname = #{nickname},</if>
             <if test="role !=null">role = #{role},</if>
             <if test="avatarUrl !=null">avatar_url = #{avatarUrl},</if>
-            <if test="createTime !=null">create_time = #{createTime},</if>
+            <if test="bio !=null">bio = #{bio},</if>
+            <if test="status !=null">status = #{status},</if>
+            <if test="lastLoginTime !=null">last_login_time = #{lastLoginTime},</if>
+            <if test="updatedTime !=null">updated_time = #{updatedTime},</if>
         </set>
         where id = #{id}
     </update>

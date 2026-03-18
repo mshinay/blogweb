@@ -1,5 +1,6 @@
 package com.boot.blogserver.service;
 
+import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
 import com.blog.dto.CommentUpdateDTO;
 import com.blog.dto.CommentUploadDTO;
@@ -38,7 +39,7 @@ public interface CommentService {
      * @param commentListDTO
      * @return
      */
-    PageResult commentAdminManageList(CommentListDTO commentListDTO);
+    PageResult commentAdminList(CommentAdminListDTO commentAdminListDTO);
 
     /**
      * 管理员删除或恢复评论

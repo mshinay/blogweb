@@ -3,6 +3,7 @@ package com.boot.blogserver.service.impl;
 import com.blog.constant.ArticleConstant;
 import com.blog.constant.CommentStatusConstant;
 import com.blog.context.BaseContext;
+import com.blog.dto.ArticleAdminListDTO;
 import com.blog.dto.ArticleEditDTO;
 import com.blog.dto.ArticleListDTO;
 import com.blog.dto.ArticleUploadDTO;
@@ -47,18 +48,16 @@ public class ArticleServiceImpl implements ArticleService {
      */
     @Override
     public Long uploadArticle(ArticleUploadDTO articleUploadDTO) {
-
-
-
-
         Article article = new Article();
         BeanUtils.copyProperties(articleUploadDTO, article);
         article.setAuthorId(BaseContext.getCurrentId());
         article.setStatus(ArticleConstant.STATUS_PUBLISHED);
-        article.setCreatedTime(LocalDateTime.now());
-        article.setUpdatedTime(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        article.setCreatedTime(now);
+        article.setUpdatedTime(now);
 
-        return articleMapper.save(article);
+        articleMapper.save(article);
+        return article.getId();
     }
 
     /**
@@ -73,7 +72,7 @@ public class ArticleServiceImpl implements ArticleService {
         PageHelper.startPage(articleListDTO.getPage(), articleListDTO.getPageSize());
 
         //Page<>是由pagehelper封装的返回集合
-        Page<Article> pages = articleMapper.pageQuery(articleListDTO);
+        Page<Article> pages = articleMapper.pageQueryPublished(articleListDTO, null);
         List<ArticlePreviewVO> previewVOS = new ArrayList<>();
         pages.getResult().forEach(article -> {
             ArticlePreviewVO articlePreviewVO = new ArticlePreviewVO();
@@ -82,9 +81,7 @@ public class ArticleServiceImpl implements ArticleService {
             if (articlePreviewVO.getSummary() == null || articlePreviewVO.getSummary().isBlank()) {
                 articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
             }
-            if (ArticleConstant.STATUS_PUBLISHED.equals(article.getStatus())) {
-                previewVOS.add(articlePreviewVO);
-            }
+            previewVOS.add(articlePreviewVO);
         });
         log.info("文章数{}",pages.getTotal());
         log.info("文章集{}",previewVOS);
@@ -103,8 +100,8 @@ public class ArticleServiceImpl implements ArticleService {
         if (article == null) {
             throw new RuntimeException("该文章不存在");
         }
-        if (article.getStatus().equals(ArticleConstant.STATUS_DELETED)) {
-            throw new RuntimeException("该文章已被删除");
+        if (!ArticleConstant.STATUS_PUBLISHED.equals(article.getStatus())) {
+            throw new RuntimeException("该文章不可见");
         }
         ArticleDetailVO articleDetailVO = new ArticleDetailVO();
         BeanUtils.copyProperties(article, articleDetailVO);
@@ -181,12 +178,12 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public PageResult articleAdminList(ArticleListDTO articleListDTO) {
+    public PageResult articleAdminList(ArticleAdminListDTO articleAdminListDTO) {
         //通过pagehelper给mybatis自动添加查询范围
-        PageHelper.startPage(articleListDTO.getPage(), articleListDTO.getPageSize());
+        PageHelper.startPage(articleAdminListDTO.getPage(), articleAdminListDTO.getPageSize());
 
         //Page<>是由pagehelper封装的返回集合
-        Page<Article> pages = articleMapper.pageQuery(articleListDTO);
+        Page<Article> pages = articleMapper.pageQueryAdmin(articleAdminListDTO, null);
         List<ArticlePreviewVO> previewVOS = new ArrayList<>();
         pages.getResult().forEach(article -> {
             ArticlePreviewVO articlePreviewVO = new ArticlePreviewVO();
