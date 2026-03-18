@@ -1,6 +1,7 @@
 package com.boot.blogserver.service;
 
 import com.blog.dto.ArticleEditDTO;
+import com.blog.dto.ArticleAdminListDTO;
 import com.blog.dto.ArticleListDTO;
 import com.blog.dto.ArticleUploadDTO;
 import com.blog.result.PageResult;
@@ -12,7 +13,7 @@ public interface ArticleService {
      * 上传文章
      * @param articleUploadDTO
      */
-    void uploadArticle(ArticleUploadDTO articleUploadDTO);
+    Long uploadArticle(ArticleUploadDTO articleUploadDTO);
 
     /**
      * 列表查询
@@ -51,5 +52,5 @@ public interface ArticleService {
      * @param articleListDTO
      * @return
      */
-    PageResult articleAdminList(ArticleListDTO articleListDTO);
+    PageResult articleAdminList(ArticleAdminListDTO articleAdminListDTO);
 }

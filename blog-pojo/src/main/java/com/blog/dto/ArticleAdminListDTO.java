@@ -5,7 +5,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-public class ArticleListDTO implements Serializable {
+public class ArticleAdminListDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long authorId;
@@ -13,6 +13,12 @@ public class ArticleListDTO implements Serializable {
     private Long categoryId;
 
     private Long tagId;
+
+    private Integer status;
+
+    private Integer allowComment;
+
+    private Integer isTop;
 
     private String slug;
 

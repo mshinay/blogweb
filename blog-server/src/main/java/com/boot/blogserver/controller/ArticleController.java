@@ -1,6 +1,7 @@
 package com.boot.blogserver.controller;
 
 import com.blog.dto.ArticleEditDTO;
+import com.blog.dto.ArticleAdminListDTO;
 import com.blog.dto.ArticleListDTO;
 import com.blog.dto.ArticleUploadDTO;
 import com.blog.result.PageResult;
@@ -28,8 +29,8 @@ public class ArticleController {
     @PostMapping("/upload")
     public Result uploadArticle(@RequestBody ArticleUploadDTO articleUploadDTO) {
         log.info("文章上传{}", articleUploadDTO);
-        articleService.uploadArticle(articleUploadDTO);
-        return Result.success();
+        Long id = articleService.uploadArticle(articleUploadDTO);
+        return Result.success(id);
     }
 
     /**
@@ -114,9 +115,9 @@ public class ArticleController {
     }
 
     @GetMapping("/admin/list")
-    public Result<PageResult> adminListArticles(ArticleListDTO articleListDTO) {
-        log.info("管理员文章查询{}", articleListDTO);
-        PageResult results = articleService.articleAdminList(articleListDTO);
+    public Result<PageResult> adminListArticles(ArticleAdminListDTO articleAdminListDTO) {
+        log.info("管理员文章查询{}", articleAdminListDTO);
+        PageResult results = articleService.articleAdminList(articleAdminListDTO);
         return Result.success(results);
     }
 
@@ -138,9 +139,9 @@ public class ArticleController {
      * @return
      */
     @GetMapping("/admin/search")
-    public Result<PageResult> adminSearchArticles(ArticleListDTO articleListDTO) {
-        log.info("管理员查询{}", articleListDTO);
-        PageResult results = articleService.articleAdminList(articleListDTO);
+    public Result<PageResult> adminSearchArticles(ArticleAdminListDTO articleAdminListDTO) {
+        log.info("管理员查询{}", articleAdminListDTO);
+        PageResult results = articleService.articleAdminList(articleAdminListDTO);
         return Result.success(results);
     }
 

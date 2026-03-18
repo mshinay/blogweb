@@ -3,33 +3,88 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.boot.blogserver.mapper.CommentMapper">
-    <select id="pageQuery" resultType="com.blog.entry.Comment">
-        select * from comment
+    <select id="pageQueryPublished" resultType="com.blog.entry.Comment">
+        select *
+        from comment
         <where>
+            status = 1
+            <if test="articleId != null">
+                and article_id = #{articleId}
+            </if>
+            <if test="rootId != null">
+                and root_id = #{rootId}
+            </if>
+        </where>
+        order by created_time desc
+    </select>
 
+    <select id="pageQueryAdmin" resultType="com.blog.entry.Comment">
+        select *
+        from comment
+        <where>
             <if test="userId != null">
                 user_id = #{userId}
             </if>
             <if test="articleId != null">
-                AND article_id = #{articleId}
+                and article_id = #{articleId}
+            </if>
+            <if test="parentId != null">
+                and parent_id = #{parentId}
+            </if>
+            <if test="rootId != null">
+                and root_id = #{rootId}
+            </if>
+            <if test="replyUserId != null">
+                and reply_user_id = #{replyUserId}
+            </if>
+            <if test="status != null">
+                and status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND content LIKE CONCAT('%', #{keyword}, '%')
+                and content like concat('%', #{keyword}, '%')
             </if>
         </where>
-                 order by create_time desc
+        order by created_time desc
+    </select>
+
+    <select id="listByArticleId" resultType="com.blog.entry.Comment">
+        select *
+        from comment
+        where article_id = #{articleId}
+        order by created_time desc
+    </select>
+
+    <select id="listByRootId" resultType="com.blog.entry.Comment">
+        select *
+        from comment
+        where root_id = #{rootId}
+        order by created_time asc
+    </select>
+
+    <select id="listByArticleIds" resultType="com.blog.entry.Comment">
+        select *
+        from comment
+        where article_id in
+        <foreach collection="articleIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        order by created_time desc
     </select>
 
     <update id="update" parameterType="com.blog.entry.Comment">
         update comment
         <set>
             <if test="articleId !=null">article_id = #{articleId},</if>
+            <if test="parentId !=null">parent_id = #{parentId},</if>
+            <if test="rootId !=null">root_id = #{rootId},</if>
+            <if test="replyUserId !=null">reply_user_id = #{replyUserId},</if>
+            <if test="replyToCommentId !=null">reply_to_comment_id = #{replyToCommentId},</if>
             <if test="content !=null">content = #{content},</if>
             <if test="userId !=null">user_id = #{userId},</if>
             <if test="status !=null">status = #{status},</if>
-            <if test="createTime !=null">create_time = #{createTime},</if>
+            <if test="likeCount !=null">like_count = #{likeCount},</if>
+            <if test="updatedTime !=null">updated_time = #{updatedTime},</if>
         </set>
         where id = #{id}
     </update>
-
 </mapper>

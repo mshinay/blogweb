@@ -5,8 +5,10 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-public class CommentUploadDTO implements Serializable {
+public class CommentAdminListDTO implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    private Long userId;
 
     private Long articleId;
 
@@ -16,7 +18,11 @@ public class CommentUploadDTO implements Serializable {
 
     private Long replyUserId;
 
-    private Long replyToCommentId;
+    private Integer status;
 
-    private String content;
+    private String keyword;
+
+    private int page;
+
+    private int pageSize;
 }

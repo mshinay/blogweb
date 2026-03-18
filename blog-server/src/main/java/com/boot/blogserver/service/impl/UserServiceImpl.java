@@ -60,7 +60,9 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         BeanUtils.copyProperties(userRegisterDTO, user);
         user.setRole(RoleConstant.USER);
-        user.setCreatedTime(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        user.setCreatedTime(now);
+        user.setUpdatedTime(now);
 
         //写入数据库
         userMapper.save(user);
@@ -79,15 +81,12 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new RuntimeException("该用户不存在");
         }
-        //防止重复注册
-        if (userUpdateDTO.getUsername()!=null&&userMapper.getByUsername(userUpdateDTO.getUsername()) != null) {
-            throw new RuntimeException("该用户名已存在");
-        }
         if(userUpdateDTO.getEmail()!=null&&userMapper.getByEmail(userUpdateDTO.getEmail()) != null) {
             throw new RuntimeException("该邮箱已注册");
         }
 
         BeanUtils.copyProperties(userUpdateDTO, user);
+        user.setUpdatedTime(LocalDateTime.now());
 
         userMapper.update(user);
         return userMapper.getById(userUpdateDTO.getId());

@@ -2,15 +2,15 @@ package com.blog.dto;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class CommentListDTO {
+public class CommentListDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long userId;//作者id
+    private Long articleId;
 
-    private Long articleId;//文章id
-
-    private String keyword;
+    private Long rootId;
 
     private int page;
 

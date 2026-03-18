@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Agent ###
+blog-complete.sql
+后端改造计划总纲.md
+说明文档.md
+/builder/
+/planner/
+Builder执行说明.md

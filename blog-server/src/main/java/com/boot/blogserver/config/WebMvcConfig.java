@@ -44,11 +44,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")  // 允许所有路径跨域
-                .allowedOrigins("http://127.0.0.1:5500")  // 前端开发阶段允许所有域
+                .allowedOrigins("http://127.0.0.1:5500/")  // 前端开发阶段允许所有域
                 .allowedMethods("GET", "POST", "PUT", "DELETE","PATCH")
                 .allowCredentials(true);
     }
-
+//5500 5173  http://127.0.0.1:5500/ http://localhost:5173
 
     /**
      * 扩展MVC框架的消息转换器
