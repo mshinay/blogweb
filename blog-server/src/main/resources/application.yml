@@ -1,0 +1,40 @@
+
+spring:
+  application:
+    name: blog-server
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:file:./application-local.yml
+      - optional:file:./config/application-local.yml
+      - optional:file:./blog-server/application-local.yml
+      - optional:file:./blog-server/config/application-local.yml
+
+mybatis:
+  #mapper配置文件
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.blog.entry
+  configuration:
+    #开启驼峰命名
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com:
+      sky:
+        mapper: debug
+        service: info
+        controller: info
+
+blog:
+  jwt:
+    # 设置用户端jwt过期时间
+    user-ttl: ${BLOG_JWT_USER_TTL:7200000}
+    # 设置前端传递过来的令牌名称
+    user-token-name: ${BLOG_JWT_USER_TOKEN_NAME:authentication}
+  alioss:
+    endpoint: ${BLOG_OSS_ENDPOINT:}
+    access-key-id: ${BLOG_OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${BLOG_OSS_ACCESS_KEY_SECRET:}
+    bucket-name: ${BLOG_OSS_BUCKET_NAME:}
