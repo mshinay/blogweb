@@ -2,6 +2,7 @@ package com.boot.blogserver.service.impl;
 
 import com.blog.constant.ArticleConstant;
 import com.blog.constant.CommentStatusConstant;
+import com.blog.constant.RoleConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.ArticleAdminListDTO;
 import com.blog.dto.ArticleEditDTO;
@@ -12,6 +13,7 @@ import com.blog.entry.ArticleStats;
 import com.blog.entry.Category;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
+import com.blog.exception.ForbiddenException;
 import com.blog.result.PageResult;
 import com.blog.utils.ArticleUtil;
 import com.blog.vo.ArticleAdminListVO;
@@ -137,8 +139,15 @@ public class ArticleServiceImpl implements ArticleService {
      */
     @Override
     public void editArticle(ArticleEditDTO articleEditDTO) {
+        Article existingArticle = articleMapper.getById(articleEditDTO.getId());
+        if (existingArticle == null) {
+            throw BusinessException.notFound("该文章不存在");
+        }
+        validateArticleOwnership(existingArticle);
+
         Article article = new Article();
         BeanUtils.copyProperties(articleEditDTO, article);
+        article.setAuthorId(existingArticle.getAuthorId());
         article.setUpdatedTime(LocalDateTime.now());
         log.info("{}",article);
         articleMapper.update(article);
@@ -155,6 +164,7 @@ public class ArticleServiceImpl implements ArticleService {
         if (article == null) {
             throw BusinessException.notFound("该文章不存在");
         }
+        validateArticleOwnership(article);
         article = new Article();
         article.setId(articleId);
         article.setStatus(ArticleConstant.STATUS_DELETED);
@@ -170,6 +180,7 @@ public class ArticleServiceImpl implements ArticleService {
     @Transactional
     @Override
     public void editStatus(Long id) {
+        validateAdminAccess();
         Article article = articleMapper.getById(id);
         if (article == null) {
             throw BusinessException.notFound("该文章不存在");
@@ -196,6 +207,7 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public PageResult articleAdminList(ArticleAdminListDTO articleAdminListDTO) {
+        validateAdminAccess();
         //通过pagehelper给mybatis自动添加查询范围
         PageHelper.startPage(articleAdminListDTO.getPage(), articleAdminListDTO.getPageSize());
 
@@ -267,6 +279,19 @@ public class ArticleServiceImpl implements ArticleService {
             return CommentStatusConstant.STATUS_HIDDEN;
         }
         throw new BusinessException("文章状态非法，无法映射评论状态");
+    }
+
+    private void validateArticleOwnership(Article article) {
+        Long currentUserId = BaseContext.getCurrentId();
+        if (currentUserId == null || !currentUserId.equals(article.getAuthorId())) {
+            throw new ForbiddenException("无权操作他人的文章");
+        }
+    }
+
+    private void validateAdminAccess() {
+        if (!RoleConstant.ADMIN.equals(BaseContext.getCurrentRole())) {
+            throw new ForbiddenException("无管理员权限");
+        }
     }
 
 }

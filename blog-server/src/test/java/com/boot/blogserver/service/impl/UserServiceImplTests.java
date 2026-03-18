@@ -1,13 +1,17 @@
 package com.boot.blogserver.service.impl;
 
 import com.blog.constant.RoleConstant;
+import com.blog.constant.UserStatusConstant;
+import com.blog.context.BaseContext;
 import com.blog.dto.UserLoginDTO;
 import com.blog.dto.UserRegisterDTO;
 import com.blog.dto.UserUpdateDTO;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
+import com.blog.exception.ForbiddenException;
 import com.blog.utils.PasswordUtil;
 import com.boot.blogserver.mapper.UserMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -37,6 +41,11 @@ class UserServiceImplTests {
 
     @InjectMocks
     private UserServiceImpl userService;
+
+    @AfterEach
+    void tearDown() {
+        BaseContext.clear();
+    }
 
     @Test
     void registerShouldPersistEncodedPassword() {
@@ -72,6 +81,7 @@ class UserServiceImplTests {
         User user = new User();
         user.setId(1L);
         user.setUsername("alice");
+        user.setStatus(UserStatusConstant.STATUS_NORMAL);
         user.setPassword(PasswordUtil.encode("plain-password"));
         when(userMapper.getByUsername("alice")).thenReturn(user);
 
@@ -88,6 +98,7 @@ class UserServiceImplTests {
 
         User user = new User();
         user.setUsername("alice");
+        user.setStatus(UserStatusConstant.STATUS_NORMAL);
         user.setPassword(PasswordUtil.encode("plain-password"));
         when(userMapper.getByUsername("alice")).thenReturn(user);
 
@@ -98,6 +109,8 @@ class UserServiceImplTests {
 
     @Test
     void updateShouldKeepExistingPassword() {
+        BaseContext.setCurrentId(1L);
+
         UserUpdateDTO dto = new UserUpdateDTO();
         dto.setId(1L);
         dto.setEmail("new@example.com");
@@ -132,6 +145,38 @@ class UserServiceImplTests {
         assertEquals("New Nick", submitted.getNickname());
         assertNotNull(submitted.getUpdatedTime());
         assertSame(updatedUser, result);
+    }
+
+    @Test
+    void loginShouldRejectDisabledUser() {
+        UserLoginDTO dto = new UserLoginDTO();
+        dto.setUsername("alice");
+        dto.setPassword("plain-password");
+
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("alice");
+        user.setStatus(UserStatusConstant.STATUS_DISABLED);
+        user.setPassword(PasswordUtil.encode("plain-password"));
+        when(userMapper.getByUsername("alice")).thenReturn(user);
+
+        ForbiddenException exception = assertThrows(ForbiddenException.class, () -> userService.login(dto));
+
+        assertEquals("当前账号已被禁用", exception.getMessage());
+    }
+
+    @Test
+    void updateShouldRejectUpdatingOtherUser() {
+        BaseContext.setCurrentId(2L);
+
+        UserUpdateDTO dto = new UserUpdateDTO();
+        dto.setId(1L);
+        dto.setEmail("new@example.com");
+
+        ForbiddenException exception = assertThrows(ForbiddenException.class, () -> userService.updte(dto));
+
+        assertEquals("无权修改其他用户资料", exception.getMessage());
+        verify(userMapper, never()).getById(1L);
     }
 
     @Test

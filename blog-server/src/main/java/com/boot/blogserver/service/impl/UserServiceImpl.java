@@ -1,11 +1,14 @@
 package com.boot.blogserver.service.impl;
 
 import com.blog.constant.RoleConstant;
+import com.blog.constant.UserStatusConstant;
+import com.blog.context.BaseContext;
 import com.blog.dto.UserLoginDTO;
 import com.blog.dto.UserRegisterDTO;
 import com.blog.dto.UserUpdateDTO;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
+import com.blog.exception.ForbiddenException;
 import com.blog.utils.PasswordUtil;
 import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.UserService;
@@ -31,6 +34,9 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.getByUsername(username);
         if (user == null) {
             throw BusinessException.notFound("该用户不存在");
+        }
+        if (UserStatusConstant.STATUS_DISABLED.equals(user.getStatus())) {
+            throw new ForbiddenException("当前账号已被禁用");
         }
         if (!PasswordUtil.matches(password, user.getPassword())) {
             throw new BusinessException("密码错误");
@@ -73,6 +79,9 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public User updte(UserUpdateDTO userUpdateDTO) {
+        if (!userUpdateDTO.getId().equals(BaseContext.getCurrentId())) {
+            throw new ForbiddenException("无权修改其他用户资料");
+        }
         User user = userMapper.getById(userUpdateDTO.getId());
         if (user == null) {
             throw BusinessException.notFound("该用户不存在");

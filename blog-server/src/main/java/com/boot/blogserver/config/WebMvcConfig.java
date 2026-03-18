@@ -34,7 +34,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/article/**") // 拦截文章相关接口
                 .addPathPatterns("/user/**")
                 .addPathPatterns("/comment/**")
-                .excludePathPatterns("/user/login", "/user/register"); // 放行登录和注册
+                .excludePathPatterns("/user/login", "/user/register", "/user/public/**"); // 放行登录、注册和公开资料
     }
 
     /**

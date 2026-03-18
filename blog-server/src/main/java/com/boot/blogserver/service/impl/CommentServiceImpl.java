@@ -1,6 +1,7 @@
 package com.boot.blogserver.service.impl;
 
 import com.blog.constant.CommentStatusConstant;
+import com.blog.constant.RoleConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
@@ -10,6 +11,7 @@ import com.blog.entry.Article;
 import com.blog.entry.Comment;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
+import com.blog.exception.ForbiddenException;
 import com.blog.result.PageResult;
 import com.blog.vo.AdminCommentListVO;
 import com.blog.vo.CommentPreviewVO;
@@ -93,9 +95,11 @@ public class CommentServiceImpl implements CommentService {
         if(comment==null) {
             throw BusinessException.notFound("该评论不存在");
         }
+        validateCommentOwnership(comment);
         comment = new Comment();
         comment.setId(id);
         comment.setStatus(CommentStatusConstant.STATUS_DELETED);
+        comment.setUpdatedTime(LocalDateTime.now());
         log.info("当前状态{}",comment);
         commentMapper.update(comment);
     }
@@ -106,15 +110,18 @@ public class CommentServiceImpl implements CommentService {
         if(comment==null) {
             throw BusinessException.notFound("该评论不存在");
         }
+        validateCommentOwnership(comment);
         comment = new Comment();
         comment.setId(commentUpdateDTO.getId());
         comment.setContent(commentUpdateDTO.getContent());
+        comment.setUpdatedTime(LocalDateTime.now());
         log.info("当前更新状态{}",comment);
         commentMapper.update(comment);
     }
 
     @Override
     public PageResult commentAdminList(CommentAdminListDTO commentAdminListDTO) {
+        validateAdminAccess();
         PageHelper.startPage(commentAdminListDTO.getPage(), commentAdminListDTO.getPageSize());
         Page<Comment> pages = commentMapper.pageQueryAdmin(commentAdminListDTO);
 
@@ -158,6 +165,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public void editStatus(Long id) {
+        validateAdminAccess();
         Comment comment = commentMapper.getById(id);
         if(comment==null) {
             throw BusinessException.notFound("该评论不存在");
@@ -175,5 +183,18 @@ public class CommentServiceImpl implements CommentService {
 
         comment.setStatus(newStatus);
         commentMapper.update(comment);
+    }
+
+    private void validateCommentOwnership(Comment comment) {
+        Long currentUserId = BaseContext.getCurrentId();
+        if (currentUserId == null || !currentUserId.equals(comment.getUserId())) {
+            throw new ForbiddenException("无权操作他人的评论");
+        }
+    }
+
+    private void validateAdminAccess() {
+        if (!RoleConstant.ADMIN.equals(BaseContext.getCurrentRole())) {
+            throw new ForbiddenException("无管理员权限");
+        }
     }
 }
