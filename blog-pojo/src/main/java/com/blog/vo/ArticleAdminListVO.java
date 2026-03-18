@@ -4,10 +4,9 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
-public class ArticlePreviewVO implements Serializable {
+public class ArticleAdminListVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long id;
@@ -15,10 +14,6 @@ public class ArticlePreviewVO implements Serializable {
     private String title;
 
     private String slug;
-
-    private String summary;
-
-    private String coverUrl;
 
     private Long authorId;
 
@@ -28,13 +23,15 @@ public class ArticlePreviewVO implements Serializable {
 
     private String categoryName;
 
-    private String categorySlug;
+    private Integer status;
 
-    private List<TagVO> tagList;
+    private Integer isTop;
+
+    private Integer allowComment;
 
     private LocalDateTime publishTime;
 
-    private Integer isTop;
+    private LocalDateTime updatedTime;
 
     private Long viewCount;
 

@@ -38,7 +38,7 @@ public interface CommentService {
      * @param commentListDTO
      * @return
      */
-    PageResult commentAdminList(CommentListDTO commentListDTO);
+    PageResult commentAdminManageList(CommentListDTO commentListDTO);
 
     /**
      * 管理员删除或恢复评论

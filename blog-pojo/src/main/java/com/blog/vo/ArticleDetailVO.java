@@ -4,23 +4,41 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ArticleDetailVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long id;//文章id
+    private Long id;
 
-    private String title;//标题
+    private String title;
 
-    private String content;//
+    private String slug;
 
-    private String authorName;
+    private String summary;
 
-    private Long authorId;//作者id
+    private String coverUrl;
 
-    private Integer status;//状态 0:可视 1:不可视
+    private String content;
 
-    private LocalDateTime createTime;//创建时间
+    private String contentType;
 
+    private UserProfileVO author;
+
+    private CategoryVO category;
+
+    private List<TagVO> tags;
+
+    private ArticleStatsVO stats;
+
+    private Integer allowComment;
+
+    private LocalDateTime publishTime;
+
+    private LocalDateTime updatedTime;
+
+    private Integer wordCount;
+
+    private List<CommentTreeVO> comments;
 }

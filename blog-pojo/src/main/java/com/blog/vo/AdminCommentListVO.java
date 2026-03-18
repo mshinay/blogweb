@@ -6,34 +6,32 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
-public class CommentPreviewVO implements Serializable {
+public class AdminCommentListVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long id;
+    private Long commentId;
 
     private Long articleId;
+
+    private String articleTitle;
+
+    private Integer articleStatus;
 
     private Long userId;
 
     private String userName;
 
-    private String userAvatarUrl;
-
-    private String content;
-
-    private Long parentId;
-
-    private Long rootId;
-
     private Long replyUserId;
 
     private String replyUserName;
 
-    private Long replyToCommentId;
-
-    private Integer likeCount;
+    private String content;
 
     private Integer status;
+
+    private Long rootId;
+
+    private Long parentId;
 
     private LocalDateTime createdTime;
 

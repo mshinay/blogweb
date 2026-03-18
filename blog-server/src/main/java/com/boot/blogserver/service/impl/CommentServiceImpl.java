@@ -9,9 +9,7 @@ import com.blog.entry.Article;
 import com.blog.entry.Comment;
 import com.blog.entry.User;
 import com.blog.result.PageResult;
-import com.blog.utils.ArticleUtil;
 import com.blog.vo.AdminCommentManageVO;
-import com.blog.vo.ArticlePreviewVO;
 import com.blog.vo.CommentPreviewVO;
 import com.boot.blogserver.mapper.ArticleMapper;
 import com.boot.blogserver.mapper.CommentMapper;
@@ -49,7 +47,9 @@ public class CommentServiceImpl implements CommentService {
         comment.setUserId(BaseContext.getCurrentId());
         log.info("{}",BaseContext.getCurrentId());
         comment.setStatus(CommentStatusConstant.STATUS_NORMAL);
-        comment.setCreatedTime(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        comment.setCreatedTime(now);
+        comment.setUpdatedTime(now);
         commentMapper.save(comment);
     }
 
@@ -110,7 +110,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public PageResult commentAdminList(CommentListDTO commentListDTO) {
+    public PageResult commentAdminManageList(CommentListDTO commentListDTO) {
         // 分页查询评论
         PageHelper.startPage(commentListDTO.getPage(), commentListDTO.getPageSize());
         Page<Comment> pages = commentMapper.pageQuery(commentListDTO);
@@ -140,7 +140,7 @@ public class CommentServiceImpl implements CommentService {
             CommentPreviewVO commentVO = new CommentPreviewVO();
             BeanUtils.copyProperties(comment, commentVO);
             commentVO.setUserName(userNameMap.get(comment.getUserId()));
-            commentVO.setUserName("哈哈");
+
 
 
             // 分组逻辑，computeIfAbsent 避免 if 判断

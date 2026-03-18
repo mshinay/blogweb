@@ -7,10 +7,12 @@ import com.blog.dto.ArticleEditDTO;
 import com.blog.dto.ArticleListDTO;
 import com.blog.dto.ArticleUploadDTO;
 import com.blog.entry.Article;
+import com.blog.entry.User;
 import com.blog.result.PageResult;
 import com.blog.utils.ArticleUtil;
 import com.blog.vo.ArticleDetailVO;
 import com.blog.vo.ArticlePreviewVO;
+import com.blog.vo.UserProfileVO;
 import com.boot.blogserver.mapper.ArticleMapper;
 import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.UserMapper;
@@ -77,9 +79,10 @@ public class ArticleServiceImpl implements ArticleService {
             ArticlePreviewVO articlePreviewVO = new ArticlePreviewVO();
             BeanUtils.copyProperties(article, articlePreviewVO);
             articlePreviewVO.setAuthorName(userMapper.getNameById(article.getAuthorId()));
-            articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
-            //确保文章没有被删除
-            if(articlePreviewVO.getStatus()==ArticleConstant.STATUS_PUBLISHED) {
+            if (articlePreviewVO.getSummary() == null || articlePreviewVO.getSummary().isBlank()) {
+                articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
+            }
+            if (ArticleConstant.STATUS_PUBLISHED.equals(article.getStatus())) {
                 previewVOS.add(articlePreviewVO);
             }
         });
@@ -105,7 +108,12 @@ public class ArticleServiceImpl implements ArticleService {
         }
         ArticleDetailVO articleDetailVO = new ArticleDetailVO();
         BeanUtils.copyProperties(article, articleDetailVO);
-        articleDetailVO.setAuthorName(userMapper.getNameById(article.getAuthorId()));
+        User author = userMapper.getById(article.getAuthorId());
+        if (author != null) {
+            UserProfileVO authorProfile = new UserProfileVO();
+            BeanUtils.copyProperties(author, authorProfile);
+            articleDetailVO.setAuthor(authorProfile);
+        }
         return articleDetailVO;
     }
 
@@ -184,7 +192,9 @@ public class ArticleServiceImpl implements ArticleService {
             ArticlePreviewVO articlePreviewVO = new ArticlePreviewVO();
             BeanUtils.copyProperties(article, articlePreviewVO);
             articlePreviewVO.setAuthorName(userMapper.getNameById(article.getAuthorId()));
-            articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
+            if (articlePreviewVO.getSummary() == null || articlePreviewVO.getSummary().isBlank()) {
+                articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
+            }
 
                 previewVOS.add(articlePreviewVO);
 

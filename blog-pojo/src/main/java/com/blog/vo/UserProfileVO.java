@@ -5,7 +5,7 @@ import lombok.Data;
 import java.io.Serializable;
 
 @Data
-public class UserLoginVO implements Serializable {
+public class UserProfileVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long id;
@@ -16,9 +16,5 @@ public class UserLoginVO implements Serializable {
 
     private String avatarUrl;
 
-    private Integer role;
-
-    private Integer status;
-
-    private String jwtToken;
+    private String bio;
 }
