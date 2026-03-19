@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This repository is a Java 17 Maven backend for a blog system. `blog-server/` contains the Spring Boot application, controllers, services, MyBatis mappers, XML mapper files, and runtime configuration under `src/main/resources/`. `blog-pojo/` holds shared entities, DTOs, and VOs in `com.blog.*`. `blog-common/` contains shared constants, context, JSON, result wrappers, properties, and utility classes. Tests currently live in `blog-server/src/test/java/`.
+This repository is a Java 17 Maven backend for a blog system. `blog-server/` contains the Spring Boot application, controllers, services, MyBatis mappers, XML mapper files, and runtime configuration under `src/main/resources/`. `blog-pojo/` holds shared entities, DTOs, and VOs in `com.blog.*`. `blog-common/` contains shared constants, context, JSON, result wrappers, properties, and utility classes. Tests currently live in `blog-server/src/test/java/`. Guides and plans for backend transformation tasks are located in `builder/` and `planner/` directories.
 
 ## Build, Test, and Development Commands
 Use Maven from the repository root for shared modules, then run the app from `blog-server/`.
@@ -25,4 +25,4 @@ JUnit 5 and `spring-boot-starter-test` are configured. Add tests under `blog-ser
 The visible Git history is minimal (`完成版`), so there is no reliable house style to preserve. Use short, imperative commit messages with an optional module prefix, for example `blog-server: fix article status toggle`. PRs should include a concise summary, affected modules, setup or config changes, linked issues, and example requests or screenshots when API behavior changes.
 
 ## Security & Configuration Tips
-Review `application.yml` and `application-dev.yml` before committing. Do not commit real database credentials, JWT secrets, or OSS keys. Keep environment-specific values external when possible, prefer untracked `application-local.yml` or environment variables for local secrets, and document any new required properties in the PR. Local config may live in the current working directory or under `blog-server/`, but it must stay untracked.
+Review `application.yml` and `application-dev.yml` before committing. Do not commit real database credentials, JWT secrets, or OSS keys. Keep environment-specific values external when possible, prefer untracked `application-local.yml` or environment variables for local secrets, and document any new required properties in the PR. Local config may live in the current working directory or under `blog-server/`, but it must stay untracked. An example local configuration file `application-local.example.yml` is provided in `blog-server/src/main/resources/` for reference when setting up untracked local configurations.
