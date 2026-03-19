@@ -109,4 +109,40 @@
             #{id}
         </foreach>
     </select>
+
+    <select id="authorPageQuery" resultType="com.blog.entry.Article">
+        select *
+        from article
+        <where>
+            author_id = #{query.authorId}
+
+            and status in (0,1)
+            <if test="query != null and query.categoryId != null">
+                and category_id = #{query.categoryId}
+            </if>
+            <if test="query != null and query.slug != null and query.slug != ''">
+                and slug = #{query.slug}
+            </if>
+
+            <if test="query != null and query.keyword != null and query.keyword != ''">
+                and (
+                title like concat('%', #{query.keyword}, '%')
+                or summary like concat('%', #{query.keyword}, '%')
+                or content like concat('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="articleIds != null and articleIds.size() == 0">
+                and 1 = 0
+            </if>
+            <if test="articleIds != null and articleIds.size() > 0">
+                and id in
+                <foreach collection="articleIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+        order by is_top desc, publish_time desc, created_time desc
+    </select>
+
+
 </mapper>

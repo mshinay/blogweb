@@ -9,6 +9,8 @@ import com.blog.result.Result;
 import com.blog.vo.ArticleDetailVO;
 import com.boot.blogserver.service.ArticleService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,7 +83,7 @@ public class ArticleController {
    @GetMapping("/user")
    public Result<PageResult> userArticles(@Valid ArticleListDTO articleListDTO) {
         log.info("用户查询{}", articleListDTO);
-       PageResult results = articleService.articleList(articleListDTO);
+       PageResult results = articleService.userArticleList(articleListDTO);
        return Result.success(results);
    }
 
@@ -93,7 +95,7 @@ public class ArticleController {
     @GetMapping("/user/search")
     public Result<PageResult> userSearchArticles(@Valid ArticleListDTO articleListDTO) {
         log.info("用户搜索{}", articleListDTO);
-        PageResult results = articleService.articleList(articleListDTO);
+        PageResult results = articleService.userArticleList(articleListDTO);
         return Result.success(results);
     }
 
@@ -118,6 +120,14 @@ public class ArticleController {
         return Result.success();
     }
 
+    @PatchMapping("/{articleId}")
+    public Result editStatus(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId) {
+        log.info("用户修改文章状况{}", articleId);
+        articleService.editStatus(articleId);
+        return Result.success();
+    }
+
+
     @GetMapping("/admin/list")
     public Result<PageResult> adminListArticles(@Valid ArticleAdminListDTO articleAdminListDTO) {
         log.info("管理员文章查询{}", articleAdminListDTO);
@@ -133,13 +143,13 @@ public class ArticleController {
     @PatchMapping("/admin/status/{id}")
     public Result adminEditStatus(@Positive(message = "文章ID必须大于0") @PathVariable Long id) {
         log.info("管理员修改文章状况{}", id);
-        articleService.editStatus(id);
+        articleService.adminEditStatus(id);
         return Result.success();
     }
 
     /**
      * 管理员文章查询
-     * @param articleListDTO
+     * @param articleAdminListDTO
      * @return
      */
     @GetMapping("/admin/search")

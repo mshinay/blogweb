@@ -27,6 +27,8 @@ public interface ArticleMapper {
     Page<Article> pageQueryAdmin(@Param("query") ArticleAdminListDTO articleAdminListDTO,
                                  @Param("articleIds") Set<Long> articleIds);
 
+    Page<Article> authorPageQuery(@Param("query") ArticleListDTO articleAdminListDTO,
+                                  @Param("articleIds") Set<Long> articleIds);
     @Select("select * from article where id=#{id}")
     Article getById(Long id);
 

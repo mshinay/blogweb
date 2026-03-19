@@ -50,12 +50,12 @@ class AdminPermissionServiceTests {
     }
 
     @Test
-    void articleEditStatusShouldRejectNonAdmin() {
+    void articleAdminEditStatusShouldRejectNonAdmin() {
         BaseContext.setCurrentRole(1);
 
         ForbiddenException exception = assertThrows(
                 ForbiddenException.class,
-                () -> articleService.editStatus(1L)
+                () -> articleService.adminEditStatus(1L)
         );
 
         assertEquals("无管理员权限", exception.getMessage());

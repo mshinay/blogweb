@@ -36,5 +36,6 @@
         <foreach collection="articleIds" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
+        order by article_id asc, id asc
     </select>
 </mapper>

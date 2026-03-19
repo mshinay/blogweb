@@ -43,10 +43,12 @@ public class ArticleUploadDTO implements Serializable {
     @Size(max = 10, message = "标签数量不能超过10个")
     private List<@NotNull(message = "标签ID不能为空") @Positive(message = "标签ID必须大于0") Long> tagIds;
 
+    @NotNull(message = "允许评论标记不能为空")
     @Min(value = 0, message = "允许评论标记只能为0或1")
     @Max(value = 1, message = "允许评论标记只能为0或1")
     private Integer allowComment;
 
+    @NotNull(message = "文章状态不能为空")
     @Min(value = 0, message = "文章状态只能为0或1")
     @Max(value = 1, message = "文章状态只能为0或1")
     private Integer status;
