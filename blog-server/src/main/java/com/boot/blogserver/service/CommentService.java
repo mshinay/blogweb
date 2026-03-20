@@ -4,7 +4,11 @@ import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
 import com.blog.dto.CommentUpdateDTO;
 import com.blog.dto.CommentUploadDTO;
+import com.blog.entry.Comment;
 import com.blog.result.PageResult;
+import com.blog.vo.CommentTreeVO;
+
+import java.util.List;
 
 public interface CommentService {
 
@@ -36,7 +40,7 @@ public interface CommentService {
 
     /**
      * 管理员列表查询
-     * @param commentListDTO
+     * @param commentAdminListDTO
      * @return
      */
     PageResult commentAdminList(CommentAdminListDTO commentAdminListDTO);
@@ -46,4 +50,6 @@ public interface CommentService {
      * @param id
      */
     void editStatus(Long id);
+
+    public List<CommentTreeVO> buildCommentTreeVOs(List<Comment> rootComments);
 }

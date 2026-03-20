@@ -27,7 +27,11 @@ public interface CommentMapper {
 
     List<Comment> listByArticleId(Long articleId);
 
-    List<Comment> listByRootIds(List<Long> rootIds);
+    List<Comment> listPublishedRootByArticleId(Long articleId);
+
+    List<Comment> statusListByRootIds(List<Long> rootIds,Integer status);
+
+    List<Comment> listPublishedByRootIds(@Param("rootIds") List<Long> rootIds);
 
     List<Comment> listByReplyToCommentIds(List<Long> replyToCommentIds);
 

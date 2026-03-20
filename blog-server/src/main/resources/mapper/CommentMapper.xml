@@ -53,10 +53,33 @@
         order by created_time desc
     </select>
 
-    <select id="listByRootIds" resultType="com.blog.entry.Comment">
+    <select id="listPublishedRootByArticleId" resultType="com.blog.entry.Comment">
+        select *
+        from comment
+        where article_id = #{articleId}
+          and status = 1
+          and root_id = 0
+        order by created_time desc
+    </select>
+
+    <select id="statusListByRootIds" resultType="com.blog.entry.Comment">
         select *
         from comment
         where root_id in
+        <foreach collection="rootIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by created_time asc
+    </select>
+
+    <select id="listPublishedByRootIds" resultType="com.blog.entry.Comment">
+        select *
+        from comment
+        where status = 1
+          and root_id in
         <foreach collection="rootIds" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>

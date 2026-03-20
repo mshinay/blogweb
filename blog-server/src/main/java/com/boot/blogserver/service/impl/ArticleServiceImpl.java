@@ -14,6 +14,7 @@ import com.blog.entry.Article;
 import com.blog.entry.ArticleTag;
 import com.blog.entry.ArticleStats;
 import com.blog.entry.Category;
+import com.blog.entry.Comment;
 import com.blog.entry.Tag;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
@@ -25,6 +26,8 @@ import com.blog.vo.ArticleDetailVO;
 import com.blog.vo.ArticlePreviewVO;
 import com.blog.vo.ArticleStatsVO;
 import com.blog.vo.CategoryVO;
+import com.blog.vo.CommentPreviewVO;
+import com.blog.vo.CommentTreeVO;
 import com.blog.vo.TagVO;
 import com.blog.vo.UserProfileVO;
 import com.boot.blogserver.mapper.ArticleMapper;
@@ -35,6 +38,7 @@ import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.TagMapper;
 import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.ArticleService;
+import com.boot.blogserver.service.CommentService;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +51,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -66,6 +71,8 @@ public class ArticleServiceImpl implements ArticleService {
     private ArticleStatsMapper articleStatsMapper;
     @Autowired
     private TagMapper tagMapper;
+    @Autowired
+    private CommentService commentService;
 
     /**
      * 上传文章
@@ -159,12 +166,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
         ArticleDetailVO articleDetailVO = new ArticleDetailVO();
         BeanUtils.copyProperties(article, articleDetailVO);
-        User author = userMapper.getById(article.getAuthorId());
-        if (author != null) {
-            UserProfileVO authorProfile = new UserProfileVO();
-            BeanUtils.copyProperties(author, authorProfile);
-            articleDetailVO.setAuthor(authorProfile);
-        }
+        articleDetailVO.setAuthor(buildUserProfile(article.getAuthorId()));
         if (article.getCategoryId() != null) {
             Category category = categoryMapper.getById(article.getCategoryId());
             if (category != null) {
@@ -172,12 +174,9 @@ public class ArticleServiceImpl implements ArticleService {
             }
         }
         articleDetailVO.setTags(buildTagListByArticleIds(Collections.singleton(articleId)).getOrDefault(articleId, Collections.emptyList()));
-        ArticleStats articleStats = articleStatsMapper.getByArticleId(articleId);
-        if (articleStats != null) {
-            ArticleStatsVO articleStatsVO = new ArticleStatsVO();
-            BeanUtils.copyProperties(articleStats, articleStatsVO);
-            articleDetailVO.setStats(articleStatsVO);
-        }
+        articleDetailVO.setStats(buildArticleStats(articleId));
+        List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
+        articleDetailVO.setComments(commentService.buildCommentTreeVOs(rootComments));
         return articleDetailVO;
     }
 
@@ -489,6 +488,88 @@ public class ArticleServiceImpl implements ArticleService {
         BeanUtils.copyProperties(tag, tagVO);
         return tagVO;
     }
+
+    private UserProfileVO buildUserProfile(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        User author = userMapper.getById(userId);
+        if (author == null) {
+            return null;
+        }
+        UserProfileVO authorProfile = new UserProfileVO();
+        BeanUtils.copyProperties(author, authorProfile);
+        return authorProfile;
+    }
+
+    private ArticleStatsVO buildArticleStats(Long articleId) {
+        ArticleStats articleStats = articleStatsMapper.getByArticleId(articleId);
+        ArticleStatsVO articleStatsVO = new ArticleStatsVO();
+        if (articleStats == null) {
+            articleStatsVO.setViewCount(0L);
+            articleStatsVO.setLikeCount(0L);
+            articleStatsVO.setCommentCount(0L);
+            articleStatsVO.setFavoriteCount(0L);
+            return articleStatsVO;
+        }
+        BeanUtils.copyProperties(articleStats, articleStatsVO);
+        return articleStatsVO;
+    }
+
+ /*   private List<CommentTreeVO> buildArticleCommentTree(Long articleId) {
+        List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
+        if (rootComments.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> rootIds = rootComments.stream().map(Comment::getId).toList();
+        List<Comment> childComments = commentMapper.listPublishedByRootIds(rootIds);
+        Map<Long, List<Comment>> childCommentMap = childComments.stream()
+                .collect(Collectors.groupingBy(Comment::getRootId, LinkedHashMap::new, Collectors.toList()));
+
+        Set<Long> userIds = Stream.concat(rootComments.stream(), childComments.stream())
+                .flatMap(comment -> Stream.of(comment.getUserId(), comment.getReplyUserId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userIds.isEmpty()
+                ? Collections.emptyMap()
+                : userMapper.getUsersByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<CommentTreeVO> commentTrees = new ArrayList<>();
+        for (Comment rootComment : rootComments) {
+            CommentTreeVO commentTreeVO = new CommentTreeVO();
+            commentTreeVO.setComment(toCommentPreviewVO(rootComment, userMap));
+
+            List<CommentPreviewVO> replies = childCommentMap.getOrDefault(rootComment.getId(), Collections.emptyList())
+                    .stream()
+                    .map(comment -> toCommentPreviewVO(comment, userMap))
+                    .toList();
+            commentTreeVO.setReplies(replies);
+            commentTrees.add(commentTreeVO);
+        }
+        return commentTrees;
+    }
+
+    private CommentPreviewVO toCommentPreviewVO(Comment comment, Map<Long, User> userMap) {
+        CommentPreviewVO commentPreviewVO = new CommentPreviewVO();
+        BeanUtils.copyProperties(comment, commentPreviewVO);
+
+        User user = userMap.get(comment.getUserId());
+        if (user == null) {
+            commentPreviewVO.setUserName("默认");
+            commentPreviewVO.setUserAvatarUrl("/images/default-avatar.png");
+        } else {
+            commentPreviewVO.setUserName(user.getUsername());
+            commentPreviewVO.setUserAvatarUrl(user.getAvatarUrl());
+        }
+
+        if (comment.getReplyUserId() != null && comment.getReplyUserId() > 0) {
+            User replyUser = userMap.get(comment.getReplyUserId());
+            commentPreviewVO.setReplyUserName(replyUser == null ? "默认" : replyUser.getUsername());
+        }
+        return commentPreviewVO;
+    }*/
 
 
     private Integer mapArticleStatusToCommentStatus(Integer articleStatus) {

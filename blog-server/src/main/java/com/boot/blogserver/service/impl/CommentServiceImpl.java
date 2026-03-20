@@ -98,17 +98,27 @@ public class CommentServiceImpl implements CommentService {
 
         //Page<>是由pagehelper封装的返回集合
         Page<Comment> pages = commentMapper.pageQueryPublished(commentListDTO);
-        List<CommentTreeVO> previewVOS = new ArrayList<>();
-        List<Long> rootIds = pages.getResult().stream()
-                .filter(comment -> CommentStatusConstant.STATUS_NORMAL.equals(comment.getStatus()))
+        List<CommentTreeVO> previewVOS = buildCommentTreeVOs(pages.getResult());
+        log.info("评论数{}",pages.getTotal());
+        log.info("评论集{}",previewVOS);
+
+        return new PageResult(pages.getTotal(), previewVOS);
+    }
+
+    public List<CommentTreeVO> buildCommentTreeVOs(List<Comment> rootComments) {
+        if (rootComments.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<CommentTreeVO> commentTreeVOs = new ArrayList<>();
+        List<Long> rootIds = rootComments.stream()
                 .map(Comment::getId)
                 .collect(Collectors.toList());
-        List<Comment> allChildComments = commentMapper.listByRootIds(rootIds);
+        //根据根评论id列表查询所有子评论，并且过滤掉非正常状态的评论
+        List<Comment> allChildComments = commentMapper.statusListByRootIds(rootIds,CommentStatusConstant.STATUS_NORMAL);
         Map<Long, List<Comment>> childCommentsMap = allChildComments.stream()
-                .filter(comment -> CommentStatusConstant.STATUS_NORMAL.equals(comment.getStatus()))
                 .collect(Collectors.groupingBy(Comment::getRootId));
         //所以的comment都放在allComments里了，pages.getResult()是一级评论，childCommentsMap里是二级评论
-        List<Comment> allComments = new ArrayList<>(pages.getResult());
+        List<Comment> allComments = new ArrayList<>(rootComments);
         allComments.addAll(allChildComments);
         Map<Long, User> commentsUsers = userMapper.getUsersByIds(allComments.stream()
                         .flatMap(c -> Stream.of(c.getUserId(), c.getReplyUserId()))
@@ -116,7 +126,7 @@ public class CommentServiceImpl implements CommentService {
                         .collect(Collectors.toSet()))
                 .stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
-        pages.getResult().forEach(comment -> {
+        rootComments.forEach(comment -> {
             CommentTreeVO commentTreeVO = new CommentTreeVO();
             commentTreeVO.setComment(convertToPreviewVO(comment,commentsUsers));
             List<Comment> childComments = childCommentsMap.getOrDefault(comment.getId(), Collections.emptyList());
@@ -126,14 +136,13 @@ public class CommentServiceImpl implements CommentService {
             commentTreeVO.setReplies(childPreviews);
 
 
-            previewVOS.add(commentTreeVO);
+            commentTreeVOs.add(commentTreeVO);
 
         });
-        log.info("评论数{}",pages.getTotal());
-        log.info("评论集{}",previewVOS);
 
-        return new PageResult(pages.getTotal(), previewVOS);
+        return commentTreeVOs;
     }
+
 
     private CommentPreviewVO convertToPreviewVO(Comment comment,Map<Long, User> users) {
         CommentPreviewVO commentPreviewVO = new CommentPreviewVO();
@@ -146,7 +155,7 @@ public class CommentServiceImpl implements CommentService {
             commentPreviewVO.setUserName(user.getUsername());
             commentPreviewVO.setUserAvatarUrl(user.getAvatarUrl());
         }
-        if (comment.getReplyToCommentId() != null && comment.getReplyToCommentId() > 0){
+        if (comment.getReplyUserId() != null && comment.getReplyToCommentId() > 0){
             User replyedUser = users.get(comment.getReplyUserId());
             if(replyedUser==null){commentPreviewVO.setReplyUserName("默认");}
            else{ commentPreviewVO.setReplyUserName(replyedUser.getUsername());}
@@ -154,6 +163,54 @@ public class CommentServiceImpl implements CommentService {
 
         return commentPreviewVO;
     }
+
+
+    /**
+
+     public PageResult commentList(CommentListDTO commentListDTO) {
+     //通过pagehelper给mybatis自动添加查询范围
+     PageHelper.startPage(commentListDTO.getPage(), commentListDTO.getPageSize());
+
+     //Page<>是由pagehelper封装的返回集合
+     Page<Comment> pages = commentMapper.pageQueryPublished(commentListDTO);
+     List<CommentTreeVO> previewVOS = new ArrayList<>();
+     List<Long> rootIds = pages.getResult().stream()
+     .filter(comment -> CommentStatusConstant.STATUS_NORMAL.equals(comment.getStatus()))
+     .map(Comment::getId)
+     .collect(Collectors.toList());
+     List<Comment> allChildComments = commentMapper.listByRootIds(rootIds);
+     Map<Long, List<Comment>> childCommentsMap = allChildComments.stream()
+     .filter(comment -> CommentStatusConstant.STATUS_NORMAL.equals(comment.getStatus()))
+     .collect(Collectors.groupingBy(Comment::getRootId));
+     //所以的comment都放在allComments里了，pages.getResult()是一级评论，childCommentsMap里是二级评论
+     List<Comment> allComments = new ArrayList<>(pages.getResult());
+     allComments.addAll(allChildComments);
+     Map<Long, User> commentsUsers = userMapper.getUsersByIds(allComments.stream()
+     .flatMap(c -> Stream.of(c.getUserId(), c.getReplyUserId()))
+     .filter(Objects::nonNull)
+     .collect(Collectors.toSet()))
+     .stream()
+     .collect(Collectors.toMap(User::getId, user -> user));
+     pages.getResult().forEach(comment -> {
+     CommentTreeVO commentTreeVO = new CommentTreeVO();
+     commentTreeVO.setComment(convertToPreviewVO(comment,commentsUsers));
+     List<Comment> childComments = childCommentsMap.getOrDefault(comment.getId(), Collections.emptyList());
+     List<CommentPreviewVO> childPreviews = childComments.stream()
+     .map(childComment -> convertToPreviewVO(childComment,commentsUsers))
+     .collect(Collectors.toList());
+     commentTreeVO.setReplies(childPreviews);
+
+
+     previewVOS.add(commentTreeVO);
+
+     });
+     log.info("评论数{}",pages.getTotal());
+     log.info("评论集{}",previewVOS);
+
+     return new PageResult(pages.getTotal(), previewVOS);
+     }
+
+     */
 
 
     /**

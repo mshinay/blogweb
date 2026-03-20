@@ -9,15 +9,23 @@ import com.blog.dto.ArticleEditDTO;
 import com.blog.dto.ArticleUploadDTO;
 import com.blog.entry.Article;
 import com.blog.entry.ArticleTag;
+import com.blog.entry.ArticleStats;
 import com.blog.entry.Category;
+import com.blog.entry.Comment;
 import com.blog.entry.Tag;
+import com.blog.entry.User;
 import com.blog.exception.BusinessException;
 import com.blog.exception.ForbiddenException;
+import com.blog.vo.CommentPreviewVO;
+import com.blog.vo.CommentTreeVO;
 import com.boot.blogserver.mapper.ArticleMapper;
+import com.boot.blogserver.mapper.ArticleStatsMapper;
 import com.boot.blogserver.mapper.ArticleTagMapper;
 import com.boot.blogserver.mapper.CategoryMapper;
 import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.TagMapper;
+import com.boot.blogserver.mapper.UserMapper;
+import com.boot.blogserver.service.CommentService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -42,9 +51,15 @@ class ArticleServiceImplTests {
     @Mock
     private CommentMapper commentMapper;
     @Mock
+    private UserMapper userMapper;
+    @Mock
+    private CommentService commentService;
+    @Mock
     private ArticleTagMapper articleTagMapper;
     @Mock
     private CategoryMapper categoryMapper;
+    @Mock
+    private ArticleStatsMapper articleStatsMapper;
     @Mock
     private TagMapper tagMapper;
 
@@ -243,5 +258,139 @@ class ArticleServiceImplTests {
         assertEquals("标签已禁用，无法绑定", exception.getMessage());
         verify(articleMapper, never()).save(any(Article.class));
         verify(articleTagMapper, never()).saveBatch(any());
+    }
+
+    @Test
+    void getArticleDetailShouldAggregateCoreData() {
+        Article article = new Article();
+        article.setId(1L);
+        article.setTitle("title");
+        article.setSlug("slug");
+        article.setSummary("summary");
+        article.setContent("content");
+        article.setContentType("markdown");
+        article.setAuthorId(11L);
+        article.setCategoryId(21L);
+        article.setStatus(ArticleConstant.STATUS_PUBLISHED);
+        article.setAllowComment(1);
+        article.setWordCount(123);
+        when(articleMapper.getPublishedById(1L)).thenReturn(article);
+
+        User author = new User();
+        author.setId(11L);
+        author.setUsername("author");
+        author.setNickname("作者");
+        author.setAvatarUrl("/author.png");
+
+        when(userMapper.getById(11L)).thenReturn(author);
+
+        Category category = new Category();
+        category.setId(21L);
+        category.setName("Java");
+        category.setSlug("java");
+        when(categoryMapper.getById(21L)).thenReturn(category);
+
+        Tag tag = new Tag();
+        tag.setId(31L);
+        tag.setName("Spring");
+        tag.setSlug("spring");
+        when(articleTagMapper.listByArticleIds(eq(java.util.Set.of(1L))))
+                .thenReturn(java.util.List.of(ArticleTag.builder().articleId(1L).tagId(31L).build()));
+        when(tagMapper.getByIds(eq(java.util.Set.of(31L)))).thenReturn(java.util.List.of(tag));
+
+        ArticleStats stats = ArticleStats.builder()
+                .articleId(1L)
+                .viewCount(100L)
+                .likeCount(8L)
+                .commentCount(2L)
+                .favoriteCount(3L)
+                .build();
+        when(articleStatsMapper.getByArticleId(1L)).thenReturn(stats);
+
+        Comment rootComment = Comment.builder()
+                .id(101L)
+                .articleId(1L)
+                .userId(11L)
+                .parentId(0L)
+                .rootId(0L)
+                .content("root")
+                .status(CommentStatusConstant.STATUS_NORMAL)
+                .build();
+        when(commentMapper.listPublishedRootByArticleId(1L)).thenReturn(java.util.List.of(rootComment));
+
+        CommentPreviewVO rootPreview = new CommentPreviewVO();
+        rootPreview.setId(101L);
+        rootPreview.setContent("root");
+        CommentPreviewVO replyPreview = new CommentPreviewVO();
+        replyPreview.setId(102L);
+        replyPreview.setContent("reply");
+        replyPreview.setReplyUserName("reply-user");
+        CommentTreeVO commentTreeVO = new CommentTreeVO();
+        commentTreeVO.setComment(rootPreview);
+        commentTreeVO.setReplies(java.util.List.of(replyPreview));
+        when(commentService.buildCommentTreeVOs(eq(java.util.List.of(rootComment))))
+                .thenReturn(java.util.List.of(commentTreeVO));
+
+        com.blog.vo.ArticleDetailVO detail = articleService.getArticleDetail(1L);
+
+        assertEquals("title", detail.getTitle());
+        assertNotNull(detail.getAuthor());
+        assertEquals("author", detail.getAuthor().getUsername());
+        assertNotNull(detail.getCategory());
+        assertEquals("java", detail.getCategory().getSlug());
+        assertEquals(1, detail.getTags().size());
+        assertEquals("Spring", detail.getTags().get(0).getName());
+        assertEquals(100L, detail.getStats().getViewCount());
+        assertEquals(1, detail.getComments().size());
+        assertEquals("root", detail.getComments().get(0).getComment().getContent());
+        assertEquals(1, detail.getComments().get(0).getReplies().size());
+        assertEquals("reply-user", detail.getComments().get(0).getReplies().get(0).getReplyUserName());
+    }
+
+    @Test
+    void getArticleDetailShouldReturnZeroStatsWhenStatsMissing() {
+        Article article = new Article();
+        article.setId(1L);
+        article.setAuthorId(11L);
+        article.setStatus(ArticleConstant.STATUS_PUBLISHED);
+        when(articleMapper.getPublishedById(1L)).thenReturn(article);
+
+        java.util.List<Comment> rootComments = java.util.Collections.emptyList();
+        when(commentMapper.listPublishedRootByArticleId(1L)).thenReturn(rootComments);
+        when(commentService.buildCommentTreeVOs(eq(rootComments))).thenReturn(java.util.Collections.emptyList());
+
+        com.blog.vo.ArticleDetailVO detail = articleService.getArticleDetail(1L);
+
+        assertNotNull(detail.getStats());
+        assertEquals(0L, detail.getStats().getViewCount());
+        assertEquals(0L, detail.getStats().getLikeCount());
+        assertEquals(0L, detail.getStats().getCommentCount());
+        assertEquals(0L, detail.getStats().getFavoriteCount());
+        assertEquals(java.util.Collections.emptyList(), detail.getComments());
+    }
+
+    @Test
+    void getArticleDetailShouldThrowNotFoundWhenArticleMissing() {
+        when(articleMapper.getPublishedById(1L)).thenReturn(null);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> articleService.getArticleDetail(1L));
+
+        assertEquals("该文章不存在", exception.getMessage());
+        verify(commentMapper, never()).listPublishedRootByArticleId(any());
+        verify(commentService, never()).buildCommentTreeVOs(any());
+    }
+
+    @Test
+    void getArticleDetailShouldRejectUnpublishedArticleWhenMapperReturnsIt() {
+        Article article = new Article();
+        article.setId(1L);
+        article.setStatus(ArticleConstant.STATUS_DRAFT);
+        when(articleMapper.getPublishedById(1L)).thenReturn(article);
+
+        ForbiddenException exception = assertThrows(ForbiddenException.class, () -> articleService.getArticleDetail(1L));
+
+        assertEquals("该文章无法访问", exception.getMessage());
+        verify(commentMapper, never()).listPublishedRootByArticleId(any());
+        verify(commentService, never()).buildCommentTreeVOs(any());
     }
 }
