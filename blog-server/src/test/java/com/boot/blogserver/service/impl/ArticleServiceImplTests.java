@@ -4,7 +4,9 @@ import com.blog.constant.ArticleConstant;
 import com.blog.constant.CategoryStatusConstant;
 import com.blog.constant.CommentStatusConstant;
 import com.blog.constant.TagStatusConstant;
+import com.blog.constant.RoleConstant;
 import com.blog.context.BaseContext;
+import com.blog.dto.ArticleAdminListDTO;
 import com.blog.dto.ArticleEditDTO;
 import com.blog.dto.ArticleUploadDTO;
 import com.blog.entry.Article;
@@ -16,6 +18,7 @@ import com.blog.entry.Tag;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
 import com.blog.exception.ForbiddenException;
+import com.blog.result.PageResult;
 import com.blog.vo.CommentPreviewVO;
 import com.blog.vo.CommentTreeVO;
 import com.boot.blogserver.mapper.ArticleMapper;
@@ -26,6 +29,7 @@ import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.TagMapper;
 import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.CommentService;
+import com.github.pagehelper.Page;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -392,5 +397,64 @@ class ArticleServiceImplTests {
         assertEquals("该文章无法访问", exception.getMessage());
         verify(commentMapper, never()).listPublishedRootByArticleId(any());
         verify(commentService, never()).buildCommentTreeVOs(any());
+    }
+
+    @Test
+    void articleAdminListShouldIncludeTagList() {
+        BaseContext.setCurrentRole(RoleConstant.ADMIN);
+
+        Article article = new Article();
+        article.setId(1L);
+        article.setTitle("title");
+        article.setAuthorId(11L);
+        article.setCategoryId(21L);
+        article.setStatus(ArticleConstant.STATUS_PUBLISHED);
+
+        Page<Article> page = new Page<>();
+        page.setTotal(1);
+        page.add(article);
+
+        when(articleMapper.pageQueryAdmin(any(ArticleAdminListDTO.class), isNull())).thenReturn(page);
+
+        User author = new User();
+        author.setId(11L);
+        author.setUsername("admin-author");
+        when(userMapper.getUsersByIds(eq(java.util.Set.of(11L)))).thenReturn(java.util.List.of(author));
+
+        Category category = new Category();
+        category.setId(21L);
+        category.setName("Java");
+        when(categoryMapper.getByIds(eq(java.util.Set.of(21L)))).thenReturn(java.util.List.of(category));
+
+        ArticleStats stats = ArticleStats.builder()
+                .articleId(1L)
+                .viewCount(20L)
+                .commentCount(5L)
+                .build();
+        when(articleStatsMapper.getByArticleIds(eq(java.util.Set.of(1L)))).thenReturn(java.util.List.of(stats));
+
+        when(articleTagMapper.listByArticleIds(eq(java.util.Set.of(1L))))
+                .thenReturn(java.util.List.of(ArticleTag.builder().articleId(1L).tagId(31L).build()));
+        Tag tag = new Tag();
+        tag.setId(31L);
+        tag.setName("Spring");
+        tag.setSlug("spring");
+        when(tagMapper.getByIds(eq(java.util.Set.of(31L)))).thenReturn(java.util.List.of(tag));
+
+        ArticleAdminListDTO dto = new ArticleAdminListDTO();
+        dto.setPage(1);
+        dto.setPageSize(10);
+
+        PageResult pageResult = articleService.articleAdminList(dto);
+
+        assertEquals(1L, pageResult.getTotal());
+        assertEquals(1, pageResult.getRecords().size());
+        com.blog.vo.ArticleAdminListVO record = (com.blog.vo.ArticleAdminListVO) pageResult.getRecords().get(0);
+        assertEquals("admin-author", record.getAuthorName());
+        assertEquals("Java", record.getCategoryName());
+        assertEquals(1, record.getTagList().size());
+        assertEquals("Spring", record.getTagList().get(0).getName());
+        assertEquals(20L, record.getViewCount());
+        assertEquals(5L, record.getCommentCount());
     }
 }

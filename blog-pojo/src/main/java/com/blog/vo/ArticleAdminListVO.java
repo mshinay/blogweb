@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ArticleAdminListVO implements Serializable {
@@ -36,4 +37,6 @@ public class ArticleAdminListVO implements Serializable {
     private Long viewCount;
 
     private Long commentCount;
+
+    private List<TagVO> tagList;
 }

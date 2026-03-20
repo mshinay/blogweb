@@ -166,54 +166,6 @@ public class CommentServiceImpl implements CommentService {
 
 
     /**
-
-     public PageResult commentList(CommentListDTO commentListDTO) {
-     //通过pagehelper给mybatis自动添加查询范围
-     PageHelper.startPage(commentListDTO.getPage(), commentListDTO.getPageSize());
-
-     //Page<>是由pagehelper封装的返回集合
-     Page<Comment> pages = commentMapper.pageQueryPublished(commentListDTO);
-     List<CommentTreeVO> previewVOS = new ArrayList<>();
-     List<Long> rootIds = pages.getResult().stream()
-     .filter(comment -> CommentStatusConstant.STATUS_NORMAL.equals(comment.getStatus()))
-     .map(Comment::getId)
-     .collect(Collectors.toList());
-     List<Comment> allChildComments = commentMapper.listByRootIds(rootIds);
-     Map<Long, List<Comment>> childCommentsMap = allChildComments.stream()
-     .filter(comment -> CommentStatusConstant.STATUS_NORMAL.equals(comment.getStatus()))
-     .collect(Collectors.groupingBy(Comment::getRootId));
-     //所以的comment都放在allComments里了，pages.getResult()是一级评论，childCommentsMap里是二级评论
-     List<Comment> allComments = new ArrayList<>(pages.getResult());
-     allComments.addAll(allChildComments);
-     Map<Long, User> commentsUsers = userMapper.getUsersByIds(allComments.stream()
-     .flatMap(c -> Stream.of(c.getUserId(), c.getReplyUserId()))
-     .filter(Objects::nonNull)
-     .collect(Collectors.toSet()))
-     .stream()
-     .collect(Collectors.toMap(User::getId, user -> user));
-     pages.getResult().forEach(comment -> {
-     CommentTreeVO commentTreeVO = new CommentTreeVO();
-     commentTreeVO.setComment(convertToPreviewVO(comment,commentsUsers));
-     List<Comment> childComments = childCommentsMap.getOrDefault(comment.getId(), Collections.emptyList());
-     List<CommentPreviewVO> childPreviews = childComments.stream()
-     .map(childComment -> convertToPreviewVO(childComment,commentsUsers))
-     .collect(Collectors.toList());
-     commentTreeVO.setReplies(childPreviews);
-
-
-     previewVOS.add(commentTreeVO);
-
-     });
-     log.info("评论数{}",pages.getTotal());
-     log.info("评论集{}",previewVOS);
-
-     return new PageResult(pages.getTotal(), previewVOS);
-     }
-
-     */
-
-
-    /**
      * 用户删除发表评论
      * @param id
      */
@@ -289,7 +241,7 @@ public class CommentServiceImpl implements CommentService {
 
         List<Comment> comments = pages.getResult();
         if (comments.isEmpty()) {
-            return new PageResult(0L, Collections.emptyList());
+            return new PageResult(pages.getTotal(), Collections.emptyList());
         }
 
         Set<Long> userIds = comments.stream()

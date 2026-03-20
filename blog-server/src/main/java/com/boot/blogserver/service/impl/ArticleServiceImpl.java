@@ -336,6 +336,7 @@ public class ArticleServiceImpl implements ArticleService {
                 .collect(Collectors.toMap(Category::getId, Category::getName));
         Map<Long, ArticleStats> statsMap = articleStatsMapper.getByArticleIds(articleIds).stream()
                 .collect(Collectors.toMap(ArticleStats::getArticleId, Function.identity()));
+        Map<Long, List<TagVO>> articleTagMap = buildTagListByArticleIds(articleIds);
 
         List<ArticleAdminListVO> records = new ArrayList<>();
         for (Article article : articles) {
@@ -343,6 +344,7 @@ public class ArticleServiceImpl implements ArticleService {
             BeanUtils.copyProperties(article, vo);
             vo.setAuthorName(authorNameMap.get(article.getAuthorId()));
             vo.setCategoryName(categoryNameMap.get(article.getCategoryId()));
+            vo.setTagList(articleTagMap.getOrDefault(article.getId(), Collections.emptyList()));
 
             ArticleStats stats = statsMap.get(article.getId());
             if (stats != null) {
@@ -515,61 +517,6 @@ public class ArticleServiceImpl implements ArticleService {
         BeanUtils.copyProperties(articleStats, articleStatsVO);
         return articleStatsVO;
     }
-
- /*   private List<CommentTreeVO> buildArticleCommentTree(Long articleId) {
-        List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
-        if (rootComments.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<Long> rootIds = rootComments.stream().map(Comment::getId).toList();
-        List<Comment> childComments = commentMapper.listPublishedByRootIds(rootIds);
-        Map<Long, List<Comment>> childCommentMap = childComments.stream()
-                .collect(Collectors.groupingBy(Comment::getRootId, LinkedHashMap::new, Collectors.toList()));
-
-        Set<Long> userIds = Stream.concat(rootComments.stream(), childComments.stream())
-                .flatMap(comment -> Stream.of(comment.getUserId(), comment.getReplyUserId()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<Long, User> userMap = userIds.isEmpty()
-                ? Collections.emptyMap()
-                : userMapper.getUsersByIds(userIds).stream()
-                .collect(Collectors.toMap(User::getId, Function.identity()));
-
-        List<CommentTreeVO> commentTrees = new ArrayList<>();
-        for (Comment rootComment : rootComments) {
-            CommentTreeVO commentTreeVO = new CommentTreeVO();
-            commentTreeVO.setComment(toCommentPreviewVO(rootComment, userMap));
-
-            List<CommentPreviewVO> replies = childCommentMap.getOrDefault(rootComment.getId(), Collections.emptyList())
-                    .stream()
-                    .map(comment -> toCommentPreviewVO(comment, userMap))
-                    .toList();
-            commentTreeVO.setReplies(replies);
-            commentTrees.add(commentTreeVO);
-        }
-        return commentTrees;
-    }
-
-    private CommentPreviewVO toCommentPreviewVO(Comment comment, Map<Long, User> userMap) {
-        CommentPreviewVO commentPreviewVO = new CommentPreviewVO();
-        BeanUtils.copyProperties(comment, commentPreviewVO);
-
-        User user = userMap.get(comment.getUserId());
-        if (user == null) {
-            commentPreviewVO.setUserName("默认");
-            commentPreviewVO.setUserAvatarUrl("/images/default-avatar.png");
-        } else {
-            commentPreviewVO.setUserName(user.getUsername());
-            commentPreviewVO.setUserAvatarUrl(user.getAvatarUrl());
-        }
-
-        if (comment.getReplyUserId() != null && comment.getReplyUserId() > 0) {
-            User replyUser = userMap.get(comment.getReplyUserId());
-            commentPreviewVO.setReplyUserName(replyUser == null ? "默认" : replyUser.getUsername());
-        }
-        return commentPreviewVO;
-    }*/
 
 
     private Integer mapArticleStatusToCommentStatus(Integer articleStatus) {

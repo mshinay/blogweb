@@ -18,32 +18,52 @@
     </select>
 
     <select id="pageQueryAdmin" resultType="com.blog.entry.Comment">
-        select *
-        from comment
+        select c.*
+        from comment c
         <where>
             <if test="userId != null">
-                user_id = #{userId}
+                c.user_id = #{userId}
             </if>
             <if test="articleId != null">
-                and article_id = #{articleId}
-            </if>
-            <if test="parentId != null">
-                and parent_id = #{parentId}
-            </if>
-            <if test="rootId != null">
-                and root_id = #{rootId}
-            </if>
-            <if test="replyUserId != null">
-                and reply_user_id = #{replyUserId}
+                and c.article_id = #{articleId}
             </if>
             <if test="status != null">
-                and status = #{status}
+                and c.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                and content like concat('%', #{keyword}, '%')
+                and (
+                    c.content like concat('%', #{keyword}, '%')
+                    or exists (
+                        select 1
+                        from user u
+                        where u.id = c.user_id
+                          and (
+                              u.username like concat('%', #{keyword}, '%')
+                              or u.nickname like concat('%', #{keyword}, '%')
+                          )
+                    )
+                    or exists (
+                        select 1
+                        from user ru
+                        where ru.id = c.reply_user_id
+                          and (
+                              ru.username like concat('%', #{keyword}, '%')
+                              or ru.nickname like concat('%', #{keyword}, '%')
+                          )
+                    )
+                    or exists (
+                        select 1
+                        from article a
+                        where a.id = c.article_id
+                          and (
+                              a.title like concat('%', #{keyword}, '%')
+                              or a.slug like concat('%', #{keyword}, '%')
+                          )
+                    )
+                )
             </if>
         </where>
-        order by created_time desc
+        order by c.created_time desc, c.id desc
     </select>
 
     <select id="listByArticleId" resultType="com.blog.entry.Comment">
