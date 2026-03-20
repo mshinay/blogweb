@@ -19,13 +19,23 @@ public interface CommentMapper {
             "values(#{articleId},#{parentId},#{rootId},#{replyUserId},#{replyToCommentId},#{content},#{userId},#{status},#{createdTime},#{updatedTime}) ")
     void save(Comment comment);
 
+    void commentBatchUpsert(List<Comment> commentList);
+
     Page<Comment> pageQueryPublished(CommentListDTO commentListDTO);
 
     Page<Comment> pageQueryAdmin(CommentAdminListDTO commentAdminListDTO);
 
     List<Comment> listByArticleId(Long articleId);
 
+    List<Comment> listByRootIds(List<Long> rootIds);
+
+    List<Comment> listByReplyToCommentIds(List<Long> replyToCommentIds);
+
+    @Select("select * from comment where root_id = #{rootId}")
     List<Comment> listByRootId(Long rootId);
+
+    @Select("select * from comment where reply_to_comment_id = #{replyToCommentId}")
+    List<Comment> listByReplyToCommentIds(Long replyToCommentId);
 
     List<Comment> listByArticleIds(@Param("articleIds") Set<Long> articleIds);
 

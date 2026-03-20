@@ -11,9 +11,8 @@
             <if test="articleId != null">
                 and article_id = #{articleId}
             </if>
-            <if test="rootId != null">
-                and root_id = #{rootId}
-            </if>
+            and root_id = 0
+
         </where>
         order by created_time desc
     </select>
@@ -54,10 +53,23 @@
         order by created_time desc
     </select>
 
-    <select id="listByRootId" resultType="com.blog.entry.Comment">
+    <select id="listByRootIds" resultType="com.blog.entry.Comment">
         select *
         from comment
-        where root_id = #{rootId}
+        where root_id in
+        <foreach collection="rootIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        order by created_time asc
+    </select>
+
+    <select id="listByReplyToCommentIds" resultType="com.blog.entry.Comment">
+        select *
+        from comment
+        where comment.reply_to_comment_id in
+        <foreach collection="replyToCommentIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
         order by created_time asc
     </select>
 
@@ -87,4 +99,18 @@
         </set>
         where id = #{id}
     </update>
+
+    <insert id="commentBatchUpsert">
+        INSERT INTO `comment` (id, status, updated_time)
+        VALUES
+        <foreach collection="commentList" item="item" separator=",">
+            (#{item.id}, #{item.status}, #{item.updatedTime})
+        </foreach>
+        AS new
+        ON DUPLICATE KEY UPDATE
+        status = new.status,
+        updated_time = new.updated_time
+    </insert>
+
+
 </mapper>
