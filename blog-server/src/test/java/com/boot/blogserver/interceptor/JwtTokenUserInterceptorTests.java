@@ -144,6 +144,23 @@ class JwtTokenUserInterceptorTests {
     }
 
     @Test
+    void preHandleShouldAllowStandardPublicDetailWithoutToken() throws Exception {
+        JwtProperties jwtProperties = buildJwtProperties();
+        ReflectionTestUtils.setField(interceptor, "jwtProperties", jwtProperties);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/users/1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        HandlerMethod handlerMethod = new HandlerMethod(
+                new com.boot.blogserver.controller.UserController(),
+                com.boot.blogserver.controller.UserController.class.getMethod("userInfo", Long.class)
+        );
+
+        boolean passed = interceptor.preHandle(request, response, handlerMethod);
+
+        assertTrue(passed);
+    }
+
+    @Test
     void preHandleShouldRejectArticleStatusPatchWithoutToken() throws Exception {
         JwtProperties jwtProperties = buildJwtProperties();
         ReflectionTestUtils.setField(interceptor, "jwtProperties", jwtProperties);
@@ -153,6 +170,26 @@ class JwtTokenUserInterceptorTests {
         HandlerMethod handlerMethod = new HandlerMethod(
                 new ArticleController(),
                 ArticleController.class.getMethod("editStatus", Long.class)
+        );
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> interceptor.preHandle(request, response, handlerMethod)
+        );
+
+        assertEquals("登录状态无效或已过期", exception.getMessage());
+    }
+
+    @Test
+    void preHandleShouldRejectRemovedLegacyPublicPathWithoutToken() throws Exception {
+        JwtProperties jwtProperties = buildJwtProperties();
+        ReflectionTestUtils.setField(interceptor, "jwtProperties", jwtProperties);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/articles/detail/1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        HandlerMethod handlerMethod = new HandlerMethod(
+                new ArticleController(),
+                ArticleController.class.getMethod("showArticle", Long.class)
         );
 
         UnauthorizedException exception = assertThrows(

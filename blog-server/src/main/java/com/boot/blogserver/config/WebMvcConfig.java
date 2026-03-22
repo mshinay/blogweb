@@ -31,10 +31,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtTokenUserInterceptor)
-                .addPathPatterns("/article/**") // 拦截文章相关接口
-                .addPathPatterns("/user/**")
-                .addPathPatterns("/comment/**")
-                .excludePathPatterns("/user/login", "/user/register", "/user/public/**"); // 放行登录、注册和公开资料
+                .addPathPatterns("/users/**")
+                .addPathPatterns("/articles")
+                .addPathPatterns("/articles/**")
+                .addPathPatterns("/comments")
+                .addPathPatterns("/comments/**")
+                .addPathPatterns("/admin/**")
+                .excludePathPatterns("/users/login", "/users/register"); // 放行登录、注册
     }
 
     /**
@@ -44,7 +47,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")  // 允许所有路径跨域
-                .allowedOrigins("http://127.0.0.1:5500/")  // 前端开发阶段允许所有域
+                .allowedOrigins("http://localhost:5173")  // 前端开发阶段允许所有域
                 .allowedMethods("GET", "POST", "PUT", "DELETE","PATCH")
                 .allowCredentials(true);
     }

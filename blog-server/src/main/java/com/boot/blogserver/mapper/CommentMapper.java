@@ -39,7 +39,7 @@ public interface CommentMapper {
     List<Comment> listByRootId(Long rootId);
 
     @Select("select * from comment where reply_to_comment_id = #{replyToCommentId}")
-    List<Comment> listByReplyToCommentIds(Long replyToCommentId);
+    List<Comment> listByReplyToCommentId(Long replyToCommentId);
 
     List<Comment> listByArticleIds(@Param("articleIds") Set<Long> articleIds);
 

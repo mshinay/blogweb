@@ -332,7 +332,7 @@ class ArticleServiceImplTests {
         replyPreview.setReplyUserName("reply-user");
         CommentTreeVO commentTreeVO = new CommentTreeVO();
         commentTreeVO.setComment(rootPreview);
-        commentTreeVO.setReplies(java.util.List.of(replyPreview));
+        commentTreeVO.setChildren(java.util.List.of(replyPreview));
         when(commentService.buildCommentTreeVOs(eq(java.util.List.of(rootComment))))
                 .thenReturn(java.util.List.of(commentTreeVO));
 
@@ -348,8 +348,8 @@ class ArticleServiceImplTests {
         assertEquals(100L, detail.getStats().getViewCount());
         assertEquals(1, detail.getComments().size());
         assertEquals("root", detail.getComments().get(0).getComment().getContent());
-        assertEquals(1, detail.getComments().get(0).getReplies().size());
-        assertEquals("reply-user", detail.getComments().get(0).getReplies().get(0).getReplyUserName());
+        assertEquals(1, detail.getComments().get(0).getChildren().size());
+        assertEquals("reply-user", detail.getComments().get(0).getChildren().get(0).getReplyUserName());
     }
 
     @Test

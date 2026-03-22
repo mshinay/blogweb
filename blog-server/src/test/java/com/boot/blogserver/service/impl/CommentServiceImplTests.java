@@ -59,6 +59,7 @@ class CommentServiceImplTests {
         Comment comment = new Comment();
         comment.setId(1L);
         comment.setUserId(1L);
+        comment.setRootId(0L);
         when(commentMapper.getById(1L)).thenReturn(comment);
 
         CommentUpdateDTO dto = new CommentUpdateDTO();
@@ -78,7 +79,10 @@ class CommentServiceImplTests {
         Comment comment = new Comment();
         comment.setId(1L);
         comment.setUserId(1L);
+        comment.setRootId(0L);
+        comment.setParentId(0L);
         when(commentMapper.getById(1L)).thenReturn(comment);
+        when(commentMapper.listByRootId(1L)).thenReturn(List.of());
 
         commentService.deleteComment(1L);
 

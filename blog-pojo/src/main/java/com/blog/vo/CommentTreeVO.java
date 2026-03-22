@@ -11,5 +11,5 @@ public class CommentTreeVO implements Serializable {
 
     private CommentPreviewVO comment;
 
-    private List<CommentPreviewVO> replies;
+    private List<CommentPreviewVO> children;
 }

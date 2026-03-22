@@ -69,17 +69,7 @@ public class UserController {
         return Result.success(buildLoginVO(user));
     }
 
-    @PostMapping("/update")
-    public Result<UserLoginVO> update(@Valid @RequestBody UserUpdateDTO userUpdateDTO) {
-        if (userUpdateDTO.getId() == null) {
-            throw new BusinessException(Result.VALIDATION_ERROR, 400, "用户ID不能为空");
-        }
-        log.info("用户更新 id={}", userUpdateDTO.getId());
-        User user = userService.updte(userUpdateDTO);
-        return Result.success(buildLoginVO(user));
-    }
-
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public Result<UserLoginVO> updateById(@Positive(message = "用户ID必须大于0") @PathVariable Long id,
                                           @Valid @RequestBody UserUpdateDTO userUpdateDTO) {
         if (userUpdateDTO.getId() != null && !id.equals(userUpdateDTO.getId())) {
@@ -91,7 +81,7 @@ public class UserController {
         return Result.success(buildLoginVO(user));
     }
 
-    @GetMapping({"/public/{id}", "/{id}"})
+    @GetMapping("/{id:\\d+}")
     public Result<UserProfileVO> userInfo(@Positive(message = "用户ID必须大于0") @PathVariable Long id) {
         log.info("渲染用户信息{}",id);
         User user = userService.userInfo(id);

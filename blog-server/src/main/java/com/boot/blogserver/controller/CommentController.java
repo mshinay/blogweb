@@ -24,7 +24,7 @@ public class CommentController {
      *
      * @param commentUploadDTO
      */
-    @PostMapping({"/comments", "/comments/upload"})
+    @PostMapping("/comments")
     public Result uploadComment(@Valid @RequestBody CommentUploadDTO commentUploadDTO) {
         log.info("评论上传{}", commentUploadDTO);
         commentService.uploadComment(commentUploadDTO);
@@ -36,7 +36,7 @@ public class CommentController {
      * @param commentListDTO
      * @return
      */
-    @GetMapping({"/comments", "/comments/list"})
+    @GetMapping("/comments")
     public Result<PageResult> listComment(@Valid CommentListDTO commentListDTO) {
         log.info("分页查询{}", commentListDTO);
         PageResult results = commentService.commentList(commentListDTO);
@@ -72,22 +72,14 @@ public class CommentController {
      * @param id
      * @return
      */
-    @DeleteMapping("/comments/{id}")
+    @DeleteMapping("/comments/{id:\\d+}")
     public Result deleteComment(@Positive(message = "评论ID必须大于0") @PathVariable Long id) {
         log.info("用户删除评论{}", id);
         commentService.deleteComment(id);
         return Result.success();
     }
 
-    @PutMapping("/comments/update")
-    public Result updateCommentLegacy(@Valid @RequestBody CommentUpdateDTO commentUpdateDTO) {
-        if (commentUpdateDTO.getId() == null) {
-            throw new BusinessException(Result.VALIDATION_ERROR, 400, "评论ID不能为空");
-        }
-        return updateComment(commentUpdateDTO);
-    }
-
-    @PutMapping("/comments/{commentId}")
+    @PutMapping("/comments/{commentId:\\d+}")
     public Result updateCommentById(@Positive(message = "评论ID必须大于0") @PathVariable Long commentId,
                                     @Valid @RequestBody CommentUpdateDTO commentUpdateDTO) {
         if (commentUpdateDTO.getId() != null && !commentId.equals(commentUpdateDTO.getId())) {
@@ -108,14 +100,14 @@ public class CommentController {
      * @param commentAdminListDTO
      * @return
      */
-    @GetMapping({"/admin/comments", "/comments/admin/search", "/comments/admin/list"})
+    @GetMapping("/admin/comments")
     public Result<PageResult> adminListManageComment(@Valid CommentAdminListDTO commentAdminListDTO) {
         log.info("管理员评论平铺查询{}", commentAdminListDTO);
         PageResult results = commentService.commentAdminList(commentAdminListDTO);
         return Result.success(results);
     }
 
-    @PatchMapping({"/admin/comments/{commentId}/status", "/comments/admin/status/{commentId}"})
+    @PatchMapping("/admin/comments/{commentId:\\d+}/status")
     public Result adminEditStatus(@Positive(message = "评论ID必须大于0") @PathVariable Long commentId) {
         log.info("管理员修改评论状况{}", commentId);
         commentService.editStatus(commentId);

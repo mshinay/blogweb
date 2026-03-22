@@ -133,7 +133,7 @@ public class CommentServiceImpl implements CommentService {
             List<CommentPreviewVO> childPreviews = childComments.stream()
                     .map(childComment -> convertToPreviewVO(childComment,commentsUsers))
                     .collect(Collectors.toList());
-            commentTreeVO.setReplies(childPreviews);
+            commentTreeVO.setChildren(childPreviews);
 
 
             commentTreeVOs.add(commentTreeVO);
@@ -189,7 +189,7 @@ public class CommentServiceImpl implements CommentService {
         }else{
             //二级评论
             List<Comment> allRootChildComments = commentMapper.listByRootId(comment.getRootId());
-            List<Comment> childComments = commentMapper.listByReplyToCommentIds(comment.getId());
+            List<Comment> childComments = commentMapper.listByReplyToCommentId(comment.getId());
             List<Long> currentChildIds = childComments.stream().map(Comment::getId).collect(Collectors.toList());
             List<Comment>allChildComments = new ArrayList<>(List.of());
             List<Comment> subAllChildComments;

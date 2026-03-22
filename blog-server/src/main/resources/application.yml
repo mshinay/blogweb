@@ -1,15 +1,14 @@
+server:
+  servlet:
+    context-path: /api
 
 spring:
   application:
     name: blog-server
   profiles:
-    active: dev
-  config:
-    import:
-      - optional:file:./application-local.yml
-      - optional:file:./config/application-local.yml
-      - optional:file:./blog-server/application-local.yml
-      - optional:file:./blog-server/config/application-local.yml
+    active: dev,local
+
+
 
 mybatis:
   #mapper配置文件

@@ -26,7 +26,7 @@ public class CommonController {
      * @param file
      * @return
      */
-    @PostMapping({"/uploads", "/common/upload"})
+    @PostMapping("/uploads")
     public Result<String> upload(MultipartFile file)  {
         log.info("上传文件");
         if (file == null || file.isEmpty()) {

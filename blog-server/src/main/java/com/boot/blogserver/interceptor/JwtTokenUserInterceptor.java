@@ -102,10 +102,7 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
                 return true;
             }
             if (uri.matches("^/articles/\\d+$")
-                    || uri.matches("^/articles/detail/\\d+$")
-                    || uri.matches("^/comments/list$")
-                    || uri.matches("^/users/\\d+$")
-                    || uri.matches("^/users/public/\\d+$")) {
+                    || uri.matches("^/users/\\d+$")) {
                 return true;
             }
         }

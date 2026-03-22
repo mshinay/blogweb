@@ -30,7 +30,7 @@ public class ArticleController {
      * @param articleUploadDTO
      * @return
      */
-    @PostMapping({"/articles", "/articles/upload"})
+    @PostMapping("/articles")
     public Result uploadArticle(@Valid @RequestBody ArticleUploadDTO articleUploadDTO) {
         log.info("文章上传{}", articleUploadDTO);
         Long id = articleService.uploadArticle(articleUploadDTO);
@@ -55,7 +55,7 @@ public class ArticleController {
      * @param articleId
      * @return
      */
-    @GetMapping({"/articles/{articleId}", "/articles/detail/{articleId}"})
+    @GetMapping("/articles/{articleId:\\d+}")
     public Result<ArticleDetailVO> showArticle(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId) {
         log.info("查询文章{}", articleId);
         ArticleDetailVO articleDetailVO = articleService.getArticleDetail(articleId);
@@ -98,20 +98,7 @@ public class ArticleController {
         return Result.success(results);
     }
 
-    /**
-     * 修改文章
-     * @param articleEditDTO
-     * @return
-     */
-    @PostMapping("/articles/edit")
-    public Result updateArticleLegacy(@Valid @RequestBody ArticleEditDTO articleEditDTO) {
-        if (articleEditDTO.getId() == null) {
-            throw new BusinessException(Result.VALIDATION_ERROR, 400, "文章ID不能为空");
-        }
-        return editArticle(articleEditDTO);
-    }
-
-    @PutMapping("/articles/{articleId}")
+    @PutMapping("/articles/{articleId:\\d+}")
     public Result updateArticle(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId,
                                 @Valid @RequestBody ArticleEditDTO articleEditDTO) {
         if (articleEditDTO.getId() != null && !articleId.equals(articleEditDTO.getId())) {
@@ -129,22 +116,21 @@ public class ArticleController {
 
 
 
-    @DeleteMapping("/articles/{articleId}")
+    @DeleteMapping("/articles/{articleId:\\d+}")
     public Result deleteArticle(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId) {
         log.info("用户删除{}", articleId);
         articleService.deleteArticle(articleId);
         return Result.success();
     }
 
-    @PatchMapping({"/articles/{articleId}/status", "/articles/{articleId}"})
+    @PatchMapping("/articles/{articleId:\\d+}/status")
     public Result editStatus(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId) {
         log.info("用户修改文章状况{}", articleId);
         articleService.editStatus(articleId);
         return Result.success();
     }
 
-
-    @GetMapping({"/admin/articles", "/articles/admin/list", "/articles/admin/search"})
+    @GetMapping("/admin/articles")
     public Result<PageResult> adminListArticles(@Valid ArticleAdminListDTO articleAdminListDTO) {
         log.info("管理员文章查询{}", articleAdminListDTO);
         PageResult results = articleService.articleAdminList(articleAdminListDTO);
@@ -153,10 +139,10 @@ public class ArticleController {
 
     /**
      * 管理员删除或恢复文章
-     * @param id
+     * @param articleId
      * @return
      */
-    @PatchMapping({"/admin/articles/{articleId}/status", "/articles/admin/status/{articleId}"})
+    @PatchMapping("/admin/articles/{articleId:\\d+}/status")
     public Result adminEditStatus(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId) {
         log.info("管理员修改文章状况{}", articleId);
         articleService.adminEditStatus(articleId);

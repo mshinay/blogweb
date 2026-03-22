@@ -13,6 +13,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 @RestControllerAdvice
 @Slf4j
@@ -66,6 +68,19 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "请求参数不合法")
                 .orElse("请求参数不合法");
         return buildValidationError(message);
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<Result<Object>> handleNoHandlerFoundException(NoHandlerFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Result.error(HttpStatus.NOT_FOUND.value(), "请求资源不存在"));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Result<Object>> handleHttpRequestMethodNotSupportedException(
+            HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(Result.error(HttpStatus.METHOD_NOT_ALLOWED.value(), "请求方法不被允许"));
     }
 
     @ExceptionHandler(Exception.class)
