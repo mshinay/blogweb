@@ -1,7 +1,6 @@
 package com.blog.dto;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -12,7 +11,6 @@ import java.io.Serializable;
 public class UserUpdateDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @NotNull(message = "用户ID不能为空")
     @Positive(message = "用户ID必须大于0")
     private Long id;
 

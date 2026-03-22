@@ -42,6 +42,9 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
             //当前拦截到的不是动态方法，直接放行
             return true;
         }
+        if (isPublicRequest(request)) {
+            return true;
+        }
 
         //1、从请求头中获取令牌
         String token = request.getHeader(jwtProperties.getUserTokenName());
@@ -85,6 +88,28 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
         BaseContext.clear();
+    }
+
+    private boolean isPublicRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String method = request.getMethod();
+
+        if ("GET".equalsIgnoreCase(method)) {
+            if ("/articles".equals(uri)
+                    || "/comments".equals(uri)
+                    || "/categories".equals(uri)
+                    || "/tags".equals(uri)) {
+                return true;
+            }
+            if (uri.matches("^/articles/\\d+$")
+                    || uri.matches("^/articles/detail/\\d+$")
+                    || uri.matches("^/comments/list$")
+                    || uri.matches("^/users/\\d+$")
+                    || uri.matches("^/users/public/\\d+$")) {
+                return true;
+            }
+        }
+        return "/users/login".equals(uri) || "/users/register".equals(uri);
     }
 }
 
