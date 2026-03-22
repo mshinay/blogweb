@@ -7,15 +7,18 @@ import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
 import com.blog.dto.CommentUpdateDTO;
 import com.blog.dto.CommentUploadDTO;
+import com.blog.dto.CommentUserHistoryQueryDTO;
 import com.blog.entry.Article;
 import com.blog.entry.Comment;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
 import com.blog.exception.ForbiddenException;
+import com.blog.exception.UnauthorizedException;
 import com.blog.result.PageResult;
 import com.blog.vo.AdminCommentListVO;
 import com.blog.vo.CommentPreviewVO;
 import com.blog.vo.CommentTreeVO;
+import com.blog.vo.UserCommentHistoryVO;
 import com.boot.blogserver.mapper.ArticleMapper;
 import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.UserMapper;
@@ -103,6 +106,54 @@ public class CommentServiceImpl implements CommentService {
         log.info("评论集{}",previewVOS);
 
         return new PageResult(pages.getTotal(), previewVOS);
+    }
+
+    @Override
+    public PageResult currentUserCommentHistory(CommentUserHistoryQueryDTO commentUserHistoryQueryDTO) {
+        Long currentUserId = BaseContext.getCurrentId();
+        if (currentUserId == null) {
+            throw new UnauthorizedException("登录状态无效或已过期");
+        }
+
+        PageHelper.startPage(commentUserHistoryQueryDTO.getPage(), commentUserHistoryQueryDTO.getPageSize());
+        Page<Comment> pages = commentMapper.pageQueryCurrentUser(commentUserHistoryQueryDTO, currentUserId);
+        List<Comment> comments = pages.getResult();
+        if (comments.isEmpty()) {
+            return new PageResult(pages.getTotal(), Collections.emptyList());
+        }
+
+        Set<Long> userIds = comments.stream()
+                .flatMap(comment -> Stream.of(comment.getUserId(), comment.getReplyUserId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> articleIds = comments.stream().map(Comment::getArticleId).collect(Collectors.toSet());
+
+        Map<Long, String> userNameMap = userMapper.getUsersByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+        Map<Long, String> articleTitleMap = articleMapper.getArticleByIds(articleIds).stream()
+                .collect(Collectors.toMap(Article::getId, Article::getTitle));
+
+        List<UserCommentHistoryVO> records = new ArrayList<>();
+        for (Comment comment : comments) {
+            UserCommentHistoryVO vo = new UserCommentHistoryVO();
+            vo.setCommentId(comment.getId());
+            vo.setArticleId(comment.getArticleId());
+            vo.setArticleTitle(articleTitleMap.get(comment.getArticleId()));
+            vo.setUserId(comment.getUserId());
+            vo.setUserName(userNameMap.get(comment.getUserId()));
+            vo.setReplyUserId(comment.getReplyUserId());
+            vo.setReplyUserName(userNameMap.get(comment.getReplyUserId()));
+            vo.setReplyToCommentId(comment.getReplyToCommentId());
+            vo.setRootId(comment.getRootId());
+            vo.setParentId(comment.getParentId());
+            vo.setContent(comment.getContent());
+            vo.setStatus(comment.getStatus());
+            vo.setCreatedTime(comment.getCreatedTime());
+            vo.setUpdatedTime(comment.getUpdatedTime());
+            records.add(vo);
+        }
+
+        return new PageResult(pages.getTotal(), records);
     }
 
     public List<CommentTreeVO> buildCommentTreeVOs(List<Comment> rootComments) {

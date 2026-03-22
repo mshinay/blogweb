@@ -17,6 +17,18 @@
         order by created_time desc
     </select>
 
+    <select id="pageQueryCurrentUser" resultType="com.blog.entry.Comment">
+        select c.*
+        from comment c
+        <where>
+            c.user_id = #{currentUserId}
+            <if test="query.articleId != null">
+                and c.article_id = #{query.articleId}
+            </if>
+        </where>
+        order by c.created_time desc, c.id desc
+    </select>
+
     <select id="pageQueryAdmin" resultType="com.blog.entry.Comment">
         select c.*
         from comment c

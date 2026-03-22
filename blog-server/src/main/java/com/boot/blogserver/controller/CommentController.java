@@ -43,27 +43,10 @@ public class CommentController {
         return Result.success(results);
     }
 
-    /**
-     * 用户评论查询
-     * @param commentListDTO
-     * @return
-     */
-    @GetMapping("/comments/user")
-    public Result<PageResult> userComment(@Valid CommentListDTO commentListDTO) {
-        log.info("用户评论查询{}", commentListDTO);
-        PageResult results = commentService.commentList(commentListDTO);
-        return Result.success(results);
-    }
-
-    /**
-     * 列表查询
-     * @param commentListDTO
-     * @return
-     */
-    @GetMapping("/comments/user/search")
-    public Result<PageResult> userSearchComment(@Valid CommentListDTO commentListDTO) {
-        log.info("用户评论搜索{}", commentListDTO);
-        PageResult results = commentService.commentList(commentListDTO);
+    @GetMapping("/users/me/comments")
+    public Result<PageResult> currentUserCommentHistory(@Valid CommentUserHistoryQueryDTO commentUserHistoryQueryDTO) {
+        log.info("当前用户评论历史查询{}", commentUserHistoryQueryDTO);
+        PageResult results = commentService.currentUserCommentHistory(commentUserHistoryQueryDTO);
         return Result.success(results);
     }
 

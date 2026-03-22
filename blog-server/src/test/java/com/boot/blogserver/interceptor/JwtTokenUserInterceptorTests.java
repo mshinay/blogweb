@@ -4,12 +4,14 @@ import com.blog.constant.RoleConstant;
 import com.blog.constant.UserStatusConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.ArticleAdminListDTO;
+import com.blog.dto.CommentUserHistoryQueryDTO;
 import com.blog.exception.UnauthorizedException;
 import com.blog.entry.User;
 import com.blog.exception.ForbiddenException;
 import com.blog.properties.JwtProperties;
 import com.blog.utils.JwtUtil;
 import com.boot.blogserver.controller.ArticleController;
+import com.boot.blogserver.controller.CommentController;
 import com.boot.blogserver.mapper.UserMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -158,6 +160,26 @@ class JwtTokenUserInterceptorTests {
         boolean passed = interceptor.preHandle(request, response, handlerMethod);
 
         assertTrue(passed);
+    }
+
+    @Test
+    void preHandleShouldRejectUsersMeCommentsWithoutToken() throws Exception {
+        JwtProperties jwtProperties = buildJwtProperties();
+        ReflectionTestUtils.setField(interceptor, "jwtProperties", jwtProperties);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/users/me/comments");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        HandlerMethod handlerMethod = new HandlerMethod(
+                new CommentController(),
+                CommentController.class.getMethod("currentUserCommentHistory", CommentUserHistoryQueryDTO.class)
+        );
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> interceptor.preHandle(request, response, handlerMethod)
+        );
+
+        assertEquals("登录状态无效或已过期", exception.getMessage());
     }
 
     @Test

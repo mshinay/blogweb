@@ -4,6 +4,7 @@ import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
 import com.blog.dto.CommentUpdateDTO;
 import com.blog.dto.CommentUploadDTO;
+import com.blog.dto.CommentUserHistoryQueryDTO;
 import com.blog.entry.Comment;
 import com.blog.result.PageResult;
 import com.blog.vo.CommentTreeVO;
@@ -25,6 +26,13 @@ public interface CommentService {
      * @return
      */
     PageResult commentList(CommentListDTO commentListDTO);
+
+    /**
+     * 当前登录用户评论历史
+     * @param commentUserHistoryQueryDTO
+     * @return
+     */
+    PageResult currentUserCommentHistory(CommentUserHistoryQueryDTO commentUserHistoryQueryDTO);
 
     /**
      * 用户删除发表评论

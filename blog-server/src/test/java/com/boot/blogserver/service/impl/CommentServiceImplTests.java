@@ -4,11 +4,13 @@ import com.blog.constant.CommentStatusConstant;
 import com.blog.constant.RoleConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.CommentAdminListDTO;
+import com.blog.dto.CommentUserHistoryQueryDTO;
 import com.blog.entry.Article;
 import com.blog.dto.CommentUpdateDTO;
 import com.blog.entry.Comment;
 import com.blog.entry.User;
 import com.blog.exception.ForbiddenException;
+import com.blog.exception.UnauthorizedException;
 import com.blog.result.PageResult;
 import com.boot.blogserver.mapper.ArticleMapper;
 import com.boot.blogserver.mapper.CommentMapper;
@@ -91,6 +93,70 @@ class CommentServiceImplTests {
         Comment updated = commentCaptor.getValue();
         assertEquals(CommentStatusConstant.STATUS_DELETED, updated.getStatus());
         assertNotNull(updated.getUpdatedTime());
+    }
+
+    @Test
+    void currentUserCommentHistoryShouldRejectMissingLoginContext() {
+        CommentUserHistoryQueryDTO dto = new CommentUserHistoryQueryDTO();
+        dto.setPage(1);
+        dto.setPageSize(10);
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> commentService.currentUserCommentHistory(dto)
+        );
+
+        assertEquals("登录状态无效或已过期", exception.getMessage());
+        verify(commentMapper, never()).pageQueryCurrentUser(any(), any());
+    }
+
+    @Test
+    void currentUserCommentHistoryShouldOnlyQueryCurrentUserAndAssembleRecords() {
+        BaseContext.setCurrentId(11L);
+
+        Comment comment = new Comment();
+        comment.setId(1L);
+        comment.setArticleId(101L);
+        comment.setUserId(11L);
+        comment.setReplyUserId(12L);
+        comment.setReplyToCommentId(2L);
+        comment.setRootId(0L);
+        comment.setParentId(0L);
+        comment.setContent("content");
+        comment.setStatus(CommentStatusConstant.STATUS_HIDDEN);
+
+        Page<Comment> page = new Page<>();
+        page.setTotal(1);
+        page.add(comment);
+        when(commentMapper.pageQueryCurrentUser(any(CommentUserHistoryQueryDTO.class), eq(11L))).thenReturn(page);
+
+        User currentUser = new User();
+        currentUser.setId(11L);
+        currentUser.setUsername("user-a");
+        User replyUser = new User();
+        replyUser.setId(12L);
+        replyUser.setUsername("user-b");
+        when(userMapper.getUsersByIds(eq(Set.of(11L, 12L)))).thenReturn(List.of(currentUser, replyUser));
+
+        Article article = new Article();
+        article.setId(101L);
+        article.setTitle("article-title");
+        when(articleMapper.getArticleByIds(eq(Set.of(101L)))).thenReturn(List.of(article));
+
+        CommentUserHistoryQueryDTO dto = new CommentUserHistoryQueryDTO();
+        dto.setPage(1);
+        dto.setPageSize(10);
+
+        PageResult pageResult = commentService.currentUserCommentHistory(dto);
+
+        assertEquals(1L, pageResult.getTotal());
+        assertEquals(1, pageResult.getRecords().size());
+        com.blog.vo.UserCommentHistoryVO record = (com.blog.vo.UserCommentHistoryVO) pageResult.getRecords().get(0);
+        assertEquals(1L, record.getCommentId());
+        assertEquals("article-title", record.getArticleTitle());
+        assertEquals("user-a", record.getUserName());
+        assertEquals("user-b", record.getReplyUserName());
+        assertEquals(CommentStatusConstant.STATUS_HIDDEN, record.getStatus());
     }
 
     @Test

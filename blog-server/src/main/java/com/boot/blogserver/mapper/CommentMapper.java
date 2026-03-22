@@ -2,6 +2,7 @@ package com.boot.blogserver.mapper;
 
 import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
+import com.blog.dto.CommentUserHistoryQueryDTO;
 import com.blog.entry.Comment;
 import com.github.pagehelper.Page;
 import org.apache.ibatis.annotations.Insert;
@@ -22,6 +23,9 @@ public interface CommentMapper {
     void commentBatchUpsert(List<Comment> commentList);
 
     Page<Comment> pageQueryPublished(CommentListDTO commentListDTO);
+
+    Page<Comment> pageQueryCurrentUser(@Param("query") CommentUserHistoryQueryDTO commentUserHistoryQueryDTO,
+                                       @Param("currentUserId") Long currentUserId);
 
     Page<Comment> pageQueryAdmin(CommentAdminListDTO commentAdminListDTO);
 
