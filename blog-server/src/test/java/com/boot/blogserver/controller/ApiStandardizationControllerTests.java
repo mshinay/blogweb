@@ -1,15 +1,18 @@
 package com.boot.blogserver.controller;
 
 import com.blog.dto.ArticleAdminListDTO;
+import com.blog.dto.ArticleEditDTO;
 import com.blog.dto.ArticleListDTO;
 import com.blog.dto.ArticleUploadDTO;
 import com.blog.dto.CommentAdminListDTO;
 import com.blog.dto.CommentListDTO;
+import com.blog.dto.CommentUpdateDTO;
 import com.blog.dto.CommentUploadDTO;
 import com.blog.dto.UserUpdateDTO;
 import com.blog.entry.User;
 import com.blog.properties.JwtProperties;
 import com.blog.result.PageResult;
+import com.blog.utils.AliOssUtil;
 import com.blog.vo.CategoryVO;
 import com.blog.vo.CommentPreviewVO;
 import com.blog.vo.CommentTreeVO;
@@ -26,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -40,6 +44,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -54,12 +60,14 @@ class ApiStandardizationControllerTests {
     private CommentService commentService;
     private CategoryService categoryService;
     private TagService tagService;
+    private AliOssUtil aliOssUtil;
 
     @BeforeEach
     void setUp() {
         UserController userController = new UserController();
         ArticleController articleController = new ArticleController();
         CommentController commentController = new CommentController();
+        CommonController commonController = new CommonController();
         categoryService = mock(CategoryService.class);
         tagService = mock(TagService.class);
         CategoryController categoryController = new CategoryController(categoryService);
@@ -68,6 +76,7 @@ class ApiStandardizationControllerTests {
         userService = mock(UserService.class);
         articleService = mock(ArticleService.class);
         commentService = mock(CommentService.class);
+        aliOssUtil = mock(AliOssUtil.class);
         UserMapper userMapper = mock(UserMapper.class);
 
         JwtProperties jwtProperties = new JwtProperties();
@@ -79,6 +88,7 @@ class ApiStandardizationControllerTests {
         ReflectionTestUtils.setField(userController, "jwtProperties", jwtProperties);
         ReflectionTestUtils.setField(articleController, "articleService", articleService);
         ReflectionTestUtils.setField(commentController, "commentService", commentService);
+        ReflectionTestUtils.setField(commonController, "ossUtil", aliOssUtil);
 
         JwtTokenUserInterceptor jwtTokenUserInterceptor = new JwtTokenUserInterceptor();
         ReflectionTestUtils.setField(jwtTokenUserInterceptor, "jwtProperties", jwtProperties);
@@ -91,6 +101,7 @@ class ApiStandardizationControllerTests {
                         userController,
                         articleController,
                         commentController,
+                        commonController,
                         categoryController,
                         tagController)
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -114,6 +125,7 @@ class ApiStandardizationControllerTests {
         when(articleService.articleAdminList(any(ArticleAdminListDTO.class))).thenReturn(new PageResult());
         when(commentService.commentList(any(CommentListDTO.class))).thenReturn(new PageResult());
         when(commentService.commentAdminList(any(CommentAdminListDTO.class))).thenReturn(new PageResult());
+        when(aliOssUtil.upload(any(byte[].class), any(String.class))).thenReturn("https://cdn.example.com/file.png");
 
         mockMvc.perform(get("/articles").param("page", "1").param("pageSize", "10"))
                 .andExpect(status().isOk());
@@ -162,18 +174,81 @@ class ApiStandardizationControllerTests {
                                 }
                                 """))
                 .andExpect(status().isOk());
+        mockMvc.perform(put("/articles/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "title",
+                                  "slug": "slug",
+                                  "content": "content"
+                                }
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/articles/edit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id": 1,
+                                  "title": "title",
+                                  "slug": "slug",
+                                  "content": "content"
+                                }
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/articles/1/status"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/articles/1"))
+                .andExpect(status().isOk());
         mockMvc.perform(get("/admin/articles").param("page", "1").param("pageSize", "10"))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/articles/admin/list").param("page", "1").param("pageSize", "10"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/admin/articles/1/status"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/articles/admin/status/1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/comments/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "content": "updated"
+                                }
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/comments/update")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id": 2,
+                                  "content": "updated"
+                                }
+                                """))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/admin/comments").param("page", "1").param("pageSize", "10"))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/comments/admin/list").param("page", "1").param("pageSize", "10"))
                 .andExpect(status().isOk());
+        mockMvc.perform(patch("/admin/comments/3/status"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/comments/admin/status/3"))
+                .andExpect(status().isOk());
+        mockMvc.perform(multipart("/uploads")
+                        .file(new MockMultipartFile("file", "cover.png", MediaType.IMAGE_PNG_VALUE, "png".getBytes())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("https://cdn.example.com/file.png"));
+        mockMvc.perform(multipart("/common/upload")
+                        .file(new MockMultipartFile("file", "cover.png", MediaType.IMAGE_PNG_VALUE, "png".getBytes())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("https://cdn.example.com/file.png"));
 
         verify(articleService, times(2)).getArticleDetail(1L);
         verify(articleService, times(2)).uploadArticle(any(ArticleUploadDTO.class));
+        verify(articleService, times(2)).editArticle(any(ArticleEditDTO.class));
+        verify(articleService, times(2)).editStatus(1L);
+        verify(articleService, times(2)).adminEditStatus(1L);
         verify(commentService).uploadComment(any(CommentUploadDTO.class));
+        verify(commentService, times(2)).updateComment(any(CommentUpdateDTO.class));
+        verify(commentService, times(2)).editStatus(any(Long.class));
         verify(articleService, times(2)).articleAdminList(any(ArticleAdminListDTO.class));
         verify(commentService, times(2)).commentAdminList(any(CommentAdminListDTO.class));
     }
@@ -281,5 +356,58 @@ class ApiStandardizationControllerTests {
                 .andExpect(jsonPath("$.message").doesNotExist());
 
         verify(userService).updte(any(UserUpdateDTO.class));
+    }
+
+    @Test
+    void mediumPriorityResourcePathsShouldRejectMismatchedBodyId() throws Exception {
+        mockMvc.perform(put("/articles/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id": 1,
+                                  "title": "title",
+                                  "slug": "slug",
+                                  "content": "content"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("路径文章ID与请求体文章ID不一致"));
+        mockMvc.perform(put("/comments/2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id": 1,
+                                  "content": "updated"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("路径评论ID与请求体评论ID不一致"));
+
+        verify(articleService, never()).editArticle(any());
+        verify(commentService, never()).updateComment(any());
+    }
+
+    @Test
+    void legacyActionPathsShouldStillRequireBodyIds() throws Exception {
+        mockMvc.perform(post("/articles/edit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "title",
+                                  "slug": "slug",
+                                  "content": "content"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("文章ID不能为空"));
+        mockMvc.perform(put("/comments/update")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "content": "updated"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("评论ID不能为空"));
     }
 }

@@ -4,6 +4,7 @@ import com.blog.constant.RoleConstant;
 import com.blog.constant.UserStatusConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.ArticleAdminListDTO;
+import com.blog.exception.UnauthorizedException;
 import com.blog.entry.User;
 import com.blog.exception.ForbiddenException;
 import com.blog.properties.JwtProperties;
@@ -52,7 +53,7 @@ class JwtTokenUserInterceptorTests {
         when(userMapper.getById(1L)).thenReturn(user);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/article/admin/list");
+        request.setRequestURI("/admin/articles");
         request.addHeader(jwtProperties.getUserTokenName(), createToken(jwtProperties, 1L));
         MockHttpServletResponse response = new MockHttpServletResponse();
         HandlerMethod handlerMethod = new HandlerMethod(
@@ -80,7 +81,8 @@ class JwtTokenUserInterceptorTests {
         when(userMapper.getById(1L)).thenReturn(user);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/article/upload");
+        request.setRequestURI("/articles");
+        request.setMethod("POST");
         request.addHeader(jwtProperties.getUserTokenName(), createToken(jwtProperties, 1L));
         MockHttpServletResponse response = new MockHttpServletResponse();
         HandlerMethod handlerMethod = new HandlerMethod(
@@ -108,7 +110,7 @@ class JwtTokenUserInterceptorTests {
         when(userMapper.getById(1L)).thenReturn(user);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/article/admin/list");
+        request.setRequestURI("/admin/articles");
         request.addHeader(jwtProperties.getUserTokenName(), createToken(jwtProperties, 1L));
         MockHttpServletResponse response = new MockHttpServletResponse();
         HandlerMethod handlerMethod = new HandlerMethod(
@@ -122,6 +124,43 @@ class JwtTokenUserInterceptorTests {
         assertEquals(1L, BaseContext.getCurrentId());
         assertEquals(RoleConstant.ADMIN, BaseContext.getCurrentRole());
         assertEquals(UserStatusConstant.STATUS_NORMAL, BaseContext.getCurrentStatus());
+    }
+
+    @Test
+    void preHandleShouldAllowPublicGetArticleListWithoutToken() throws Exception {
+        JwtProperties jwtProperties = buildJwtProperties();
+        ReflectionTestUtils.setField(interceptor, "jwtProperties", jwtProperties);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/articles");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        HandlerMethod handlerMethod = new HandlerMethod(
+                new ArticleController(),
+                ArticleController.class.getMethod("listArticles", com.blog.dto.ArticleListDTO.class)
+        );
+
+        boolean passed = interceptor.preHandle(request, response, handlerMethod);
+
+        assertTrue(passed);
+    }
+
+    @Test
+    void preHandleShouldRejectArticleStatusPatchWithoutToken() throws Exception {
+        JwtProperties jwtProperties = buildJwtProperties();
+        ReflectionTestUtils.setField(interceptor, "jwtProperties", jwtProperties);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("PATCH", "/articles/1/status");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        HandlerMethod handlerMethod = new HandlerMethod(
+                new ArticleController(),
+                ArticleController.class.getMethod("editStatus", Long.class)
+        );
+
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> interceptor.preHandle(request, response, handlerMethod)
+        );
+
+        assertEquals("登录状态无效或已过期", exception.getMessage());
     }
 
     private JwtProperties buildJwtProperties() {

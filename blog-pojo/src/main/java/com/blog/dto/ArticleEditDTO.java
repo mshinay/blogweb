@@ -16,7 +16,6 @@ import java.util.List;
 public class ArticleEditDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @NotNull(message = "文章ID不能为空")
     @Positive(message = "文章ID必须大于0")
     private Long id;
 
