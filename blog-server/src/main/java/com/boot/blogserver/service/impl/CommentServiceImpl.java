@@ -9,6 +9,7 @@ import com.blog.dto.CommentUpdateDTO;
 import com.blog.dto.CommentUploadDTO;
 import com.blog.dto.CommentUserHistoryQueryDTO;
 import com.blog.entry.Article;
+import com.blog.entry.ArticleStats;
 import com.blog.entry.Comment;
 import com.blog.entry.User;
 import com.blog.exception.BusinessException;
@@ -20,6 +21,7 @@ import com.blog.vo.CommentPreviewVO;
 import com.blog.vo.CommentTreeVO;
 import com.blog.vo.UserCommentHistoryVO;
 import com.boot.blogserver.mapper.ArticleMapper;
+import com.boot.blogserver.mapper.ArticleStatsMapper;
 import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.CommentService;
@@ -46,11 +48,14 @@ public class CommentServiceImpl implements CommentService {
     private UserMapper userMapper;
     @Autowired
     private ArticleMapper articleMapper;
+    @Autowired
+    private ArticleStatsMapper articleStatsMapper;
 
     /**
      * 用户上传评论
      * @param commentUploadDTO
      */
+    @Transactional
     @Override
     public void uploadComment(CommentUploadDTO commentUploadDTO) {
         Comment comment = new Comment();
@@ -87,6 +92,11 @@ public class CommentServiceImpl implements CommentService {
         comment.setUpdatedTime(now);
         comment.setLikeCount(0);
         commentMapper.save(comment);
+        ArticleStats articleStats = articleStatsMapper.getByArticleId(comment.getArticleId());
+        articleStats.setCommentCount(articleStats.getCommentCount() + 1);
+        articleStats.setUpdatedTime(LocalDateTime.now());
+        articleStatsMapper.update(articleStats);
+
     }
 
     /**
@@ -224,6 +234,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public void deleteComment(Long id) {
         Comment comment = commentMapper.getById(id);
+        Long commentCount = 0L;
         if(comment==null) {
             throw BusinessException.notFound("该评论不存在");
         }
@@ -235,7 +246,16 @@ public class CommentServiceImpl implements CommentService {
                 childComment.setStatus(CommentStatusConstant.STATUS_DELETED);
                 childComment.setUpdatedTime(LocalDateTime.now());
             }
-            if(!childComments.isEmpty()){commentMapper.commentBatchUpsert(childComments);}
+            if(!childComments.isEmpty()){
+                commentMapper.commentBatchUpsert(childComments);
+                ArticleStats articleStats = articleStatsMapper.getByArticleId(comment.getArticleId());
+                articleStats.setCommentCount(articleStats.getCommentCount() - (childComments.size()+1));
+                articleStatsMapper.update(articleStats);
+            }else{
+                ArticleStats articleStats = articleStatsMapper.getByArticleId(comment.getArticleId());
+                articleStats.setCommentCount(articleStats.getCommentCount() - 1);
+                articleStatsMapper.update(articleStats);
+            }
 
         }else{
             //二级评论
@@ -257,7 +277,18 @@ public class CommentServiceImpl implements CommentService {
                 childComment.setStatus(CommentStatusConstant.STATUS_DELETED);
                 childComment.setUpdatedTime(LocalDateTime.now());
             }
-            if(!childComments.isEmpty()){commentMapper.commentBatchUpsert(allChildComments);}
+            if(!childComments.isEmpty()){
+                commentMapper.commentBatchUpsert(allChildComments);
+                ArticleStats articleStats = articleStatsMapper.getByArticleId(comment.getArticleId());
+                articleStats.setCommentCount(articleStats.getCommentCount() - (allChildComments.size()+1));
+                articleStatsMapper.update(articleStats);
+
+            }else {
+                ArticleStats articleStats = articleStatsMapper.getByArticleId(comment.getArticleId());
+                articleStats.setCommentCount(articleStats.getCommentCount() - 1);
+                articleStatsMapper.update(articleStats);
+            }
+
         }
         comment = new Comment();
         comment.setId(id);

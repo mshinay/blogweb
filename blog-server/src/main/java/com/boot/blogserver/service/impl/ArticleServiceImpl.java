@@ -95,6 +95,10 @@ public class ArticleServiceImpl implements ArticleService {
         article.setCreatedTime(now);
         if(Objects.equals(article.getStatus(), ArticleConstant.STATUS_PUBLISHED)){article.setPublishTime(now);}
         articleMapper.save(article);
+        ArticleStats articleStats = new ArticleStats();
+        //创建文章状态
+        articleStats.setArticleId(article.getId());
+        articleStatsMapper.save(articleStats);
         replaceArticleTags(article.getId(), tagIds);
         return article.getId();
     }
