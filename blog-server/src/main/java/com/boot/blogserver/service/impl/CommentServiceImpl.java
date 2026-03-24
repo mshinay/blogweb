@@ -102,6 +102,7 @@ public class CommentServiceImpl implements CommentService {
         articleStats.setUpdatedTime(LocalDateTime.now());
         articleStatsMapper.update(articleStats);
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + comment.getArticleId());
 
     }
 
@@ -297,6 +298,7 @@ public class CommentServiceImpl implements CommentService {
 
         }
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY+comment.getArticleId());
         comment = new Comment();
         comment.setId(id);
         comment.setStatus(CommentStatusConstant.STATUS_DELETED);
@@ -316,6 +318,7 @@ public class CommentServiceImpl implements CommentService {
         }
         validateCommentOwnership(comment);
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY+comment.getArticleId());
         comment = new Comment();
         comment.setId(commentUpdateDTO.getId());
         comment.setContent(commentUpdateDTO.getContent());
@@ -390,6 +393,7 @@ public class CommentServiceImpl implements CommentService {
 
         comment.setStatus(newStatus);
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY+comment.getArticleId());
         commentMapper.update(comment);
 
     }

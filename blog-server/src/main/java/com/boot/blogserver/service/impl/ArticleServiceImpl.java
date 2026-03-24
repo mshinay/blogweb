@@ -54,6 +54,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
+
 @Service
 @Slf4j
 public class ArticleServiceImpl implements ArticleService {
@@ -166,13 +168,21 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public ArticleDetailVO getArticleDetail(Long articleId) {
         String key = RedisConstant.ARTICLE_DETAIL_KEY + articleId;
-        String commenKey = RedisConstant.COMMENT_PREVIEW_KEY+articleId;
+        String commentKey = RedisConstant.COMMENT_PREVIEW_KEY+articleId;
         //从redis中查询数据
         String cacheJson=stringRedisTemplate.opsForValue().get(key);
         if(!(cacheJson==null||cacheJson.isBlank())){
         ArticleDetailVO articleDetailVO = JSONUtil.toBean(cacheJson, ArticleDetailVO.class);
-            String cacheCommen=stringRedisTemplate.opsForValue().get(commenKey);
-            List<CommentTreeVO> allComments = JSONUtil.toList(cacheCommen, CommentTreeVO.class);
+            List<CommentTreeVO> allComments;
+            String cacheComment=stringRedisTemplate.opsForValue().get(commentKey);
+            if(!(cacheComment==null||cacheComment.isBlank())){
+                allComments= JSONUtil.toList(cacheComment, CommentTreeVO.class);}
+            else {
+                List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
+                allComments = commentService.buildCommentTreeVOs(rootComments);
+                articleDetailVO.setComments(allComments);
+                stringRedisTemplate.opsForValue().set(commentKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
+            }
             articleDetailVO.setComments(allComments);
             return articleDetailVO;
         }
@@ -197,13 +207,13 @@ public class ArticleServiceImpl implements ArticleService {
                 articleDetailVO.setCategory(toCategoryVO(category));
             }
         }
-        articleDetailVO.setTags(buildTagListByArticleIds(Collections.singleton(articleId)).getOrDefault(articleId, Collections.emptyList()));
+        articleDetailVO.setTags(buildTagListByArticleIds(Collections.singleton(articleId)).getOrDefault(articleId, emptyList()));
         articleDetailVO.setStats(buildArticleStats(articleId));
         List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
         stringRedisTemplate.opsForValue().set(key,JSONUtil.toJsonStr(articleDetailVO), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
         List<CommentTreeVO> allComments = commentService.buildCommentTreeVOs(rootComments);
         articleDetailVO.setComments(allComments);
-        stringRedisTemplate.opsForValue().set(commenKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().set(commentKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
         return articleDetailVO;
     }
 
@@ -230,7 +240,7 @@ public class ArticleServiceImpl implements ArticleService {
                 articleDetailVO.setCategory(toCategoryVO(category));
             }
         }
-        articleDetailVO.setTags(buildTagListByArticleIds(Collections.singleton(articleId)).getOrDefault(articleId, Collections.emptyList()));
+        articleDetailVO.setTags(buildTagListByArticleIds(Collections.singleton(articleId)).getOrDefault(articleId, emptyList()));
         articleDetailVO.setStats(buildArticleStats(articleId));
         List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
         articleDetailVO.setComments(commentService.buildCommentTreeVOs(rootComments));
@@ -262,6 +272,7 @@ public class ArticleServiceImpl implements ArticleService {
         articleMapper.update(article);
         replaceArticleTags(article.getId(), tagIds);
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
     }
 
     /**
@@ -286,6 +297,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         commentMapper.updateStatus(articleId, mapArticleStatusToCommentStatus(ArticleConstant.STATUS_DELETED));
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
     }
 
@@ -318,6 +330,7 @@ public class ArticleServiceImpl implements ArticleService {
             throw new BusinessException("文章状态更新失败");
         }
         commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
     }
 
@@ -352,6 +365,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
         commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
         stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
     }
 
 
@@ -380,7 +394,7 @@ public class ArticleServiceImpl implements ArticleService {
 
     private List<ArticleAdminListVO> buildAdminArticleList(List<Article> articles) {
         if (articles.isEmpty()) {
-            return Collections.emptyList();
+            return emptyList();
         }
 
         Set<Long> authorIds = articles.stream().map(Article::getAuthorId).collect(Collectors.toSet());
@@ -406,7 +420,7 @@ public class ArticleServiceImpl implements ArticleService {
             BeanUtils.copyProperties(article, vo);
             vo.setAuthorName(authorNameMap.get(article.getAuthorId()));
             vo.setCategoryName(categoryNameMap.get(article.getCategoryId()));
-            vo.setTagList(articleTagMap.getOrDefault(article.getId(), Collections.emptyList()));
+            vo.setTagList(articleTagMap.getOrDefault(article.getId(), emptyList()));
 
             ArticleStats stats = statsMap.get(article.getId());
             if (stats != null) {
@@ -421,7 +435,7 @@ public class ArticleServiceImpl implements ArticleService {
 
     private List<ArticlePreviewVO> buildArticlePreviewList(List<Article> articles) {
         if (articles.isEmpty()) {
-            return Collections.emptyList();
+            return emptyList();
         }
 
         Set<Long> authorIds = articles.stream().map(Article::getAuthorId).collect(Collectors.toSet());
@@ -452,7 +466,7 @@ public class ArticleServiceImpl implements ArticleService {
                 articlePreviewVO.setCategoryName(categoryVO.getName());
                 articlePreviewVO.setCategorySlug(categoryVO.getSlug());
             }
-            articlePreviewVO.setTagList(articleTagMap.getOrDefault(article.getId(), Collections.emptyList()));
+            articlePreviewVO.setTagList(articleTagMap.getOrDefault(article.getId(), emptyList()));
 
             if (articlePreviewVO.getSummary() == null || articlePreviewVO.getSummary().isBlank()) {
                 articlePreviewVO.setSummary(ArticleUtil.generateSummary(article.getContent()));
@@ -510,7 +524,7 @@ public class ArticleServiceImpl implements ArticleService {
 
     private List<Long> validateTagsForBinding(List<Long> tagIds) {
         if (tagIds == null || tagIds.isEmpty()) {
-            return Collections.emptyList();
+            return emptyList();
         }
 
         LinkedHashSet<Long> uniqueTagIds = new LinkedHashSet<>(tagIds);
