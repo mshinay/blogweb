@@ -1,10 +1,7 @@
 package com.boot.blogserver.service.impl;
 
-import com.blog.constant.ArticleConstant;
-import com.blog.constant.CategoryStatusConstant;
-import com.blog.constant.CommentStatusConstant;
-import com.blog.constant.RoleConstant;
-import com.blog.constant.TagStatusConstant;
+import cn.hutool.json.JSONUtil;
+import com.blog.constant.*;
 import com.blog.context.BaseContext;
 import com.blog.dto.ArticleAdminListDTO;
 import com.blog.dto.ArticleEditDTO;
@@ -41,14 +38,18 @@ import com.boot.blogserver.service.ArticleService;
 import com.boot.blogserver.service.CommentService;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -73,6 +74,9 @@ public class ArticleServiceImpl implements ArticleService {
     private TagMapper tagMapper;
     @Autowired
     private CommentService commentService;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
 
     /**
      * 上传文章
@@ -161,6 +165,22 @@ public class ArticleServiceImpl implements ArticleService {
      */
     @Override
     public ArticleDetailVO getArticleDetail(Long articleId) {
+        String key = RedisConstant.ARTICLE_DETAIL_KEY + articleId;
+        String commenKey = RedisConstant.COMMENT_PREVIEW_KEY+articleId;
+        //从redis中查询数据
+        String cacheJson=stringRedisTemplate.opsForValue().get(key);
+        if(!(cacheJson==null||cacheJson.isBlank())){
+        ArticleDetailVO articleDetailVO = JSONUtil.toBean(cacheJson, ArticleDetailVO.class);
+            String cacheCommen=stringRedisTemplate.opsForValue().get(commenKey);
+            List<CommentTreeVO> allComments = JSONUtil.toList(cacheCommen, CommentTreeVO.class);
+            articleDetailVO.setComments(allComments);
+            return articleDetailVO;
+        }
+        //如果为空,尝试获取互斥锁,如果获取成功,再次查询redis,如果有数据,直接返回
+
+        //如果没有数据,从数据库查询,更新到redis中,最后释放锁
+
+        ArticleDetailVO articleDetailVO;
         Article article = articleMapper.getPublishedById(articleId);
         if (article == null) {
             throw BusinessException.notFound("该文章不存在");
@@ -168,7 +188,40 @@ public class ArticleServiceImpl implements ArticleService {
         if(!article.getStatus().equals(ArticleConstant.STATUS_PUBLISHED)){
             throw new ForbiddenException("该文章无法访问");
         }
-        ArticleDetailVO articleDetailVO = new ArticleDetailVO();
+        articleDetailVO = new ArticleDetailVO();
+        BeanUtils.copyProperties(article, articleDetailVO);
+        articleDetailVO.setAuthor(buildUserProfile(article.getAuthorId()));
+        if (article.getCategoryId() != null) {
+            Category category = categoryMapper.getById(article.getCategoryId());
+            if (category != null) {
+                articleDetailVO.setCategory(toCategoryVO(category));
+            }
+        }
+        articleDetailVO.setTags(buildTagListByArticleIds(Collections.singleton(articleId)).getOrDefault(articleId, Collections.emptyList()));
+        articleDetailVO.setStats(buildArticleStats(articleId));
+        List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
+        stringRedisTemplate.opsForValue().set(key,JSONUtil.toJsonStr(articleDetailVO), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
+        List<CommentTreeVO> allComments = commentService.buildCommentTreeVOs(rootComments);
+        articleDetailVO.setComments(allComments);
+        stringRedisTemplate.opsForValue().set(commenKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
+        return articleDetailVO;
+    }
+
+    @Override
+    public ArticleDetailVO getArticleDetailWithoutRedis(Long articleId) {
+        //如果为空,尝试获取互斥锁,如果获取成功,再次查询redis,如果有数据,直接返回
+
+        //如果没有数据,从数据库查询,更新到redis中,最后释放锁
+
+        ArticleDetailVO articleDetailVO;
+        Article article = articleMapper.getPublishedById(articleId);
+        if (article == null) {
+            throw BusinessException.notFound("该文章不存在");
+        }
+        if(!article.getStatus().equals(ArticleConstant.STATUS_PUBLISHED)){
+            throw new ForbiddenException("该文章无法访问");
+        }
+        articleDetailVO = new ArticleDetailVO();
         BeanUtils.copyProperties(article, articleDetailVO);
         articleDetailVO.setAuthor(buildUserProfile(article.getAuthorId()));
         if (article.getCategoryId() != null) {
@@ -181,6 +234,7 @@ public class ArticleServiceImpl implements ArticleService {
         articleDetailVO.setStats(buildArticleStats(articleId));
         List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
         articleDetailVO.setComments(commentService.buildCommentTreeVOs(rootComments));
+
         return articleDetailVO;
     }
 
@@ -207,6 +261,7 @@ public class ArticleServiceImpl implements ArticleService {
         article.setStatus(currentStatus);
         articleMapper.update(article);
         replaceArticleTags(article.getId(), tagIds);
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
     }
 
     /**
@@ -231,6 +286,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         commentMapper.updateStatus(articleId, mapArticleStatusToCommentStatus(ArticleConstant.STATUS_DELETED));
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
     }
 
     @Transactional
@@ -262,6 +318,7 @@ public class ArticleServiceImpl implements ArticleService {
             throw new BusinessException("文章状态更新失败");
         }
         commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
     }
 
     @Transactional
@@ -294,6 +351,7 @@ public class ArticleServiceImpl implements ArticleService {
             throw new BusinessException("文章状态更新失败");
         }
         commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
     }
 
 

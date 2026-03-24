@@ -58,6 +58,7 @@ public class ArticleController {
     @GetMapping("/articles/{articleId:\\d+}")
     public Result<ArticleDetailVO> showArticle(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId) {
         log.info("查询文章{}", articleId);
+        //ArticleDetailVO articleDetailVO = articleService.getArticleDetailWithoutRedis(articleId);
         ArticleDetailVO articleDetailVO = articleService.getArticleDetail(articleId);
        return Result.success(articleDetailVO);
     }

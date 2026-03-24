@@ -1,10 +1,6 @@
 package com.boot.blogserver.service.impl;
 
-import com.blog.constant.ArticleConstant;
-import com.blog.constant.CategoryStatusConstant;
-import com.blog.constant.CommentStatusConstant;
-import com.blog.constant.TagStatusConstant;
-import com.blog.constant.RoleConstant;
+import com.blog.constant.*;
 import com.blog.context.BaseContext;
 import com.blog.dto.ArticleAdminListDTO;
 import com.blog.dto.ArticleEditDTO;
@@ -37,6 +33,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -67,6 +64,8 @@ class ArticleServiceImplTests {
     private ArticleStatsMapper articleStatsMapper;
     @Mock
     private TagMapper tagMapper;
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
 
     @InjectMocks
     private ArticleServiceImpl articleService;
@@ -456,5 +455,11 @@ class ArticleServiceImplTests {
         assertEquals("Spring", record.getTagList().get(0).getName());
         assertEquals(20L, record.getViewCount());
         assertEquals(5L, record.getCommentCount());
+    }
+
+    @Test
+    void should_return_cache_when_cache_hit(){
+        String key = RedisConstant.ARTICLE_DETAIL_KEY+15L;
+
     }
 }

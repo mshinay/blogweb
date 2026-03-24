@@ -1,6 +1,7 @@
 package com.boot.blogserver.service.impl;
 
 import com.blog.constant.CommentStatusConstant;
+import com.blog.constant.RedisConstant;
 import com.blog.constant.RoleConstant;
 import com.blog.context.BaseContext;
 import com.blog.dto.CommentAdminListDTO;
@@ -27,10 +28,12 @@ import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.CommentService;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +53,8 @@ public class CommentServiceImpl implements CommentService {
     private ArticleMapper articleMapper;
     @Autowired
     private ArticleStatsMapper articleStatsMapper;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 用户上传评论
@@ -96,6 +101,7 @@ public class CommentServiceImpl implements CommentService {
         articleStats.setCommentCount(articleStats.getCommentCount() + 1);
         articleStats.setUpdatedTime(LocalDateTime.now());
         articleStatsMapper.update(articleStats);
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + comment.getArticleId());
 
     }
 
@@ -290,12 +296,14 @@ public class CommentServiceImpl implements CommentService {
             }
 
         }
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
         comment = new Comment();
         comment.setId(id);
         comment.setStatus(CommentStatusConstant.STATUS_DELETED);
         comment.setUpdatedTime(LocalDateTime.now());
         log.info("当前状态{}",comment);
         commentMapper.update(comment);
+
 
     }
 
@@ -307,12 +315,15 @@ public class CommentServiceImpl implements CommentService {
             throw BusinessException.notFound("该评论不存在");
         }
         validateCommentOwnership(comment);
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
         comment = new Comment();
         comment.setId(commentUpdateDTO.getId());
         comment.setContent(commentUpdateDTO.getContent());
         comment.setUpdatedTime(LocalDateTime.now());
         log.info("当前更新状态{}",comment);
+
         commentMapper.update(comment);
+
     }
 
     @Override
@@ -378,7 +389,9 @@ public class CommentServiceImpl implements CommentService {
         }
 
         comment.setStatus(newStatus);
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
         commentMapper.update(comment);
+
     }
 
     private void validateCommentOwnership(Comment comment) {

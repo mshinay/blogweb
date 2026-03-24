@@ -64,5 +64,7 @@ public interface ArticleService {
      */
     PageResult articleAdminList(ArticleAdminListDTO articleAdminListDTO);
 
-    public PageResult userArticleList(ArticleListDTO articleListDTO);
+     PageResult userArticleList(ArticleListDTO articleListDTO);
+
+     ArticleDetailVO getArticleDetailWithoutRedis(Long articleId);
 }
