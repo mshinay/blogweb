@@ -67,4 +67,6 @@ public interface ArticleService {
      PageResult userArticleList(ArticleListDTO articleListDTO);
 
      ArticleDetailVO getArticleDetailWithoutRedis(Long articleId);
+
+    public ArticleDetailVO getArticleDetailOneCache(Long articleId);
 }

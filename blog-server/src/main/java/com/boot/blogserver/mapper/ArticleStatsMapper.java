@@ -1,6 +1,7 @@
 package com.boot.blogserver.mapper;
 
 import com.blog.entry.ArticleStats;
+import com.blog.entry.Comment;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
@@ -24,4 +25,6 @@ public interface ArticleStatsMapper {
     List<ArticleStats> getByArticleIds(@Param("articleIds") Set<Long> articleIds);
 
     int update(ArticleStats articleStats);
+
+    void articleStatsBatchUpsert(List<ArticleStats> articleStatsList);
 }

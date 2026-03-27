@@ -60,6 +60,7 @@ public class ArticleController {
         log.info("查询文章{}", articleId);
         //ArticleDetailVO articleDetailVO = articleService.getArticleDetailWithoutRedis(articleId);
         ArticleDetailVO articleDetailVO = articleService.getArticleDetail(articleId);
+        //ArticleDetailVO articleDetailVO = articleService.getArticleDetailOneCache(articleId);
        return Result.success(articleDetailVO);
     }
 

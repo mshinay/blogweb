@@ -23,4 +23,17 @@
             #{id}
         </foreach>
     </select>
+
+    <insert id="articleStatsBatchUpsert">
+        INSERT INTO `article_stats` (article_id, view_count, updated_time)
+        VALUES
+        <foreach collection="articleStatsList" item="item" separator=",">
+            (#{item.articleId}, #{item.viewCount}, #{item.updatedTime})
+        </foreach>
+        AS new
+        ON DUPLICATE KEY UPDATE
+        view_count = new.view_count+article_stats.view_count,
+        updated_time = new.updated_time
+    </insert>
+
 </mapper>

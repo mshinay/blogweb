@@ -169,6 +169,7 @@ public class ArticleServiceImpl implements ArticleService {
     public ArticleDetailVO getArticleDetail(Long articleId) {
         String key = RedisConstant.ARTICLE_DETAIL_KEY + articleId;
         String commentKey = RedisConstant.COMMENT_PREVIEW_KEY+articleId;
+        String viewCountKey = RedisConstant.ARTICLE_VIEW_COUNT_KEY+articleId;
         //从redis中查询数据
         String cacheJson=stringRedisTemplate.opsForValue().get(key);
         if(!(cacheJson==null||cacheJson.isBlank())){
@@ -184,6 +185,7 @@ public class ArticleServiceImpl implements ArticleService {
                 stringRedisTemplate.opsForValue().set(commentKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
             }
             articleDetailVO.setComments(allComments);
+            stringRedisTemplate.opsForValue().increment(viewCountKey);
             return articleDetailVO;
         }
         //如果为空,尝试获取互斥锁,如果获取成功,再次查询redis,如果有数据,直接返回
@@ -214,8 +216,55 @@ public class ArticleServiceImpl implements ArticleService {
         List<CommentTreeVO> allComments = commentService.buildCommentTreeVOs(rootComments);
         articleDetailVO.setComments(allComments);
         stringRedisTemplate.opsForValue().set(commentKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().increment(viewCountKey);
         return articleDetailVO;
     }
+
+    @Override
+    public ArticleDetailVO getArticleDetailOneCache(Long articleId) {
+        String key = RedisConstant.ARTICLE_DETAIL_KEY +":onecache"+ articleId;
+        //String commenKey = RedisConstant.COMMENT_PREVIEW_KEY+articleId;
+        //从redis中查询数据
+        String cacheJson=stringRedisTemplate.opsForValue().get(key);
+        if(!(cacheJson==null||cacheJson.isBlank())){
+            ArticleDetailVO articleDetailVO = JSONUtil.toBean(cacheJson, ArticleDetailVO.class);
+            //String cacheCommen=stringRedisTemplate.opsForValue().get(commenKey);
+            //List<CommentTreeVO> allComments = JSONUtil.toList(cacheCommen, CommentTreeVO.class);
+            //articleDetailVO.setComments(allComments);
+            return articleDetailVO;
+        }
+        //如果为空,尝试获取互斥锁,如果获取成功,再次查询redis,如果有数据,直接返回
+
+        //如果没有数据,从数据库查询,更新到redis中,最后释放锁
+
+        ArticleDetailVO articleDetailVO;
+        Article article = articleMapper.getPublishedById(articleId);
+        if (article == null) {
+            throw BusinessException.notFound("该文章不存在");
+        }
+        if(!article.getStatus().equals(ArticleConstant.STATUS_PUBLISHED)){
+            throw new ForbiddenException("该文章无法访问");
+        }
+        articleDetailVO = new ArticleDetailVO();
+        BeanUtils.copyProperties(article, articleDetailVO);
+        articleDetailVO.setAuthor(buildUserProfile(article.getAuthorId()));
+        if (article.getCategoryId() != null) {
+            Category category = categoryMapper.getById(article.getCategoryId());
+            if (category != null) {
+                articleDetailVO.setCategory(toCategoryVO(category));
+            }
+        }
+        articleDetailVO.setTags(buildTagListByArticleIds(Collections.singleton(articleId)).getOrDefault(articleId, Collections.emptyList()));
+        articleDetailVO.setStats(buildArticleStats(articleId));
+        List<Comment> rootComments = commentMapper.listPublishedRootByArticleId(articleId);
+
+        List<CommentTreeVO> allComments = commentService.buildCommentTreeVOs(rootComments);
+        articleDetailVO.setComments(allComments);
+        //stringRedisTemplate.opsForValue().set(commenKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().set(key,JSONUtil.toJsonStr(articleDetailVO), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
+        return articleDetailVO;
+    }
+
 
     @Override
     public ArticleDetailVO getArticleDetailWithoutRedis(Long articleId) {
