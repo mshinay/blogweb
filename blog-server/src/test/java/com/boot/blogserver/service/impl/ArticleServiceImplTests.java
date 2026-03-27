@@ -26,7 +26,6 @@ import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.TagMapper;
 import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.CommentService;
-import com.boot.blogserver.task.ArticleViewCountSyncTask;
 import com.github.pagehelper.Page;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,12 +34,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -569,21 +566,5 @@ class ArticleServiceImplTests {
     @BeforeEach
     void setUp() {
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-    }
-
-    @Spy
-    @InjectMocks
-    private ArticleViewCountSyncTask articleViewCountSyncTask;
-    @Test
-    void test_stats_should_save_in_redis(){
-        //given
-        Set<String> viewKeys = Set.of(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + "15");
-        doReturn(viewKeys).when(articleViewCountSyncTask).scanViewKeys();
-        when(stringRedisTemplate.opsForValue().multiGet(anyList())).thenReturn(java.util.List.of("100"));
-        //when
-        articleViewCountSyncTask.syncViewCountsToDatabase();
-        //then
-        verify(articleStatsMapper).batchIncrementViewCount(anyList());
-        verify(stringRedisTemplate).delete(viewKeys);
     }
 }

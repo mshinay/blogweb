@@ -25,5 +25,5 @@ public interface ArticleStatsMapper {
 
     int update(ArticleStats articleStats);
 
-    void batchIncrementViewCount(List<ArticleStats> articleStatsList);
+    void batchIncrementViewCount(@Param("articleStatsList") List<ArticleStats> articleStatsList);
 }

@@ -32,7 +32,7 @@
         </foreach>
         AS new
         ON DUPLICATE KEY UPDATE
-        view_count = new.view_count+article_stats.view_count,
+        view_count = article_stats.view_count + new.view_count,
         updated_time = new.updated_time
     </insert>
 
