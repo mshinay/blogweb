@@ -101,8 +101,8 @@ public class CommentServiceImpl implements CommentService {
         articleStats.setCommentCount(articleStats.getCommentCount() + 1);
         articleStats.setUpdatedTime(LocalDateTime.now());
         articleStatsMapper.update(articleStats);
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + comment.getArticleId());
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + comment.getArticleId());
 
     }
 
@@ -297,8 +297,8 @@ public class CommentServiceImpl implements CommentService {
             }
 
         }
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY+comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + comment.getArticleId());
         comment = new Comment();
         comment.setId(id);
         comment.setStatus(CommentStatusConstant.STATUS_DELETED);
@@ -317,8 +317,8 @@ public class CommentServiceImpl implements CommentService {
             throw BusinessException.notFound("该评论不存在");
         }
         validateCommentOwnership(comment);
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY+comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + comment.getArticleId());
         comment = new Comment();
         comment.setId(commentUpdateDTO.getId());
         comment.setContent(commentUpdateDTO.getContent());
@@ -392,8 +392,8 @@ public class CommentServiceImpl implements CommentService {
         }
 
         comment.setStatus(newStatus);
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY+comment.getArticleId());
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY+comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + comment.getArticleId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + comment.getArticleId());
         commentMapper.update(comment);
 
     }

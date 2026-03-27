@@ -15,6 +15,7 @@ import com.blog.entry.User;
 import com.blog.exception.BusinessException;
 import com.blog.exception.ForbiddenException;
 import com.blog.result.PageResult;
+import com.blog.vo.ArticleDetailVO;
 import com.blog.vo.CommentPreviewVO;
 import com.blog.vo.CommentTreeVO;
 import com.boot.blogserver.mapper.ArticleMapper;
@@ -25,25 +26,29 @@ import com.boot.blogserver.mapper.CommentMapper;
 import com.boot.blogserver.mapper.TagMapper;
 import com.boot.blogserver.mapper.UserMapper;
 import com.boot.blogserver.service.CommentService;
+import com.boot.blogserver.task.ArticleViewCountSyncTask;
 import com.github.pagehelper.Page;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ArticleServiceImplTests {
@@ -335,7 +340,7 @@ class ArticleServiceImplTests {
         when(commentService.buildCommentTreeVOs(eq(java.util.List.of(rootComment))))
                 .thenReturn(java.util.List.of(commentTreeVO));
 
-        com.blog.vo.ArticleDetailVO detail = articleService.getArticleDetail(1L);
+        com.blog.vo.ArticleDetailVO detail = articleService.getPublishedArticleDetail(1L);
 
         assertEquals("title", detail.getTitle());
         assertNotNull(detail.getAuthor());
@@ -349,6 +354,7 @@ class ArticleServiceImplTests {
         assertEquals("root", detail.getComments().get(0).getComment().getContent());
         assertEquals(1, detail.getComments().get(0).getChildren().size());
         assertEquals("reply-user", detail.getComments().get(0).getChildren().get(0).getReplyUserName());
+        verify(valueOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + 1L);
     }
 
     @Test
@@ -363,7 +369,7 @@ class ArticleServiceImplTests {
         when(commentMapper.listPublishedRootByArticleId(1L)).thenReturn(rootComments);
         when(commentService.buildCommentTreeVOs(eq(rootComments))).thenReturn(java.util.Collections.emptyList());
 
-        com.blog.vo.ArticleDetailVO detail = articleService.getArticleDetail(1L);
+        com.blog.vo.ArticleDetailVO detail = articleService.getPublishedArticleDetail(1L);
 
         assertNotNull(detail.getStats());
         assertEquals(0L, detail.getStats().getViewCount());
@@ -377,7 +383,7 @@ class ArticleServiceImplTests {
     void getArticleDetailShouldThrowNotFoundWhenArticleMissing() {
         when(articleMapper.getPublishedById(1L)).thenReturn(null);
 
-        BusinessException exception = assertThrows(BusinessException.class, () -> articleService.getArticleDetail(1L));
+        BusinessException exception = assertThrows(BusinessException.class, () -> articleService.getPublishedArticleDetail(1L));
 
         assertEquals("该文章不存在", exception.getMessage());
         verify(commentMapper, never()).listPublishedRootByArticleId(any());
@@ -391,7 +397,7 @@ class ArticleServiceImplTests {
         article.setStatus(ArticleConstant.STATUS_DRAFT);
         when(articleMapper.getPublishedById(1L)).thenReturn(article);
 
-        ForbiddenException exception = assertThrows(ForbiddenException.class, () -> articleService.getArticleDetail(1L));
+        ForbiddenException exception = assertThrows(ForbiddenException.class, () -> articleService.getPublishedArticleDetail(1L));
 
         assertEquals("该文章无法访问", exception.getMessage());
         verify(commentMapper, never()).listPublishedRootByArticleId(any());
@@ -457,9 +463,127 @@ class ArticleServiceImplTests {
         assertEquals(5L, record.getCommentCount());
     }
 
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
+
     @Test
     void should_return_cache_when_cache_hit(){
-        String key = RedisConstant.ARTICLE_DETAIL_KEY+15L;
+        // given
+        Long articleId = 15L;
+        String key = RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + articleId;
+        String commentKey = RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + articleId;
 
+        String articleJson = """
+            {
+              "id": 15,
+              "title": "666"
+            }
+            """;
+
+        String commentsJson = """
+            [
+              {
+                "id": 1001,
+                "content": "test comment"
+              }
+            ]
+            """;
+
+        when(stringRedisTemplate.opsForValue().get(key)).thenReturn(articleJson);
+        when(stringRedisTemplate.opsForValue().get(commentKey)).thenReturn(commentsJson);
+
+        // when
+        ArticleDetailVO result = articleService.getPublishedArticleDetail(articleId);
+
+        // then
+        assertNotNull(result);
+        assertEquals(15L, result.getId());
+        assertEquals("666", result.getTitle());
+        assertNotNull(result.getComments());
+        assertEquals(1, result.getComments().size());
+        verify(valueOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + articleId);
+
+        verify(articleMapper, never()).getPublishedById(anyLong());
+        verify(categoryMapper, never()).getById(anyLong());
+        verify(commentMapper, never()).listPublishedRootByArticleId(anyLong());
+    }
+
+    @Test
+    void should_return_cache_when_cache_nothit(){
+        Long articleId = 15L;
+        String key = RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + articleId;
+        Article article = new Article();
+        article.setId(15L);
+        article.setTitle("666");
+        article.setStatus(ArticleConstant.STATUS_PUBLISHED);
+
+
+        when(articleMapper.getPublishedById(15L)).thenReturn(article);
+
+
+        // when
+        ArticleDetailVO result = articleService.getPublishedArticleDetail(articleId);
+
+        // then
+        assertNotNull(result);
+        assertEquals(15L, result.getId());
+        assertEquals("666", result.getTitle());
+
+
+        verify(articleMapper).getPublishedById(anyLong());
+        verify(valueOperations).set(eq(key), anyString(), anyLong(), any(TimeUnit.class));
+        verify(valueOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + articleId);
+
+    }
+
+
+    @Test
+    void should_delete_cache_when_data_update(){
+        // given
+        Long articleId = 15L;
+        Article article = new Article();
+        BaseContext.setCurrentId(1L);
+        article.setId(15L);
+        article.setTitle("666");
+        article.setStatus(ArticleConstant.STATUS_PUBLISHED);
+        article.setAuthorId(1L);
+        when(articleMapper.getById(15L)).thenReturn(article);
+
+
+
+
+        // when
+        ArticleEditDTO articleEditDTO = new ArticleEditDTO();
+        articleEditDTO.setId(15L);
+        articleEditDTO.setTitle("new title");
+        articleService.editArticle(articleEditDTO);
+
+
+        // then
+
+        verify(articleMapper).getById(15L);
+        verify(stringRedisTemplate, times(2)).delete(anyString());
+        verify(articleMapper).update(any(Article.class));
+    }
+    @BeforeEach
+    void setUp() {
+        lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+    }
+
+    @Spy
+    @InjectMocks
+    private ArticleViewCountSyncTask articleViewCountSyncTask;
+    @Test
+    void test_stats_should_save_in_redis(){
+        //given
+        Set<String> viewKeys = Set.of(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + "15");
+        doReturn(viewKeys).when(articleViewCountSyncTask).scanViewKeys();
+        when(stringRedisTemplate.opsForValue().multiGet(anyList())).thenReturn(java.util.List.of("100"));
+        //when
+        articleViewCountSyncTask.syncViewCountsToDatabase();
+        //then
+        verify(articleStatsMapper).batchIncrementViewCount(anyList());
+        verify(stringRedisTemplate).delete(viewKeys);
     }
 }

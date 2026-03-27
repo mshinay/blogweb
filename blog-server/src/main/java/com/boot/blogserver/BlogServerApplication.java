@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @SpringBootApplication
 @EnableTransactionManagement //开启注解方式的事务管理
-@EnableScheduling //开启定时任务
+@EnableScheduling //开启调度基础设施，具体任务语义由独立任务类承载
 @MapperScan("com.boot.blogserver.mapper")
 @Slf4j
 public class BlogServerApplication {

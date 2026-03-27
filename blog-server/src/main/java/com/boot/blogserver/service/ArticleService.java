@@ -30,7 +30,7 @@ public interface ArticleService {
      * @param articleId
      * @return
      */
-    ArticleDetailVO getArticleDetail(Long articleId);
+    ArticleDetailVO getPublishedArticleDetail(Long articleId);
 
     /**
      * 修改文章

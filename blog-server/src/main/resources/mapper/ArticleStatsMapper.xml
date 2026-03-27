@@ -24,7 +24,7 @@
         </foreach>
     </select>
 
-    <insert id="articleStatsBatchUpsert">
+    <insert id="batchIncrementViewCount">
         INSERT INTO `article_stats` (article_id, view_count, updated_time)
         VALUES
         <foreach collection="articleStatsList" item="item" separator=",">

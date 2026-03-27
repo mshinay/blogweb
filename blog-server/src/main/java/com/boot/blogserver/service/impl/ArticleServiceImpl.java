@@ -23,7 +23,6 @@ import com.blog.vo.ArticleDetailVO;
 import com.blog.vo.ArticlePreviewVO;
 import com.blog.vo.ArticleStatsVO;
 import com.blog.vo.CategoryVO;
-import com.blog.vo.CommentPreviewVO;
 import com.blog.vo.CommentTreeVO;
 import com.blog.vo.TagVO;
 import com.blog.vo.UserProfileVO;
@@ -166,16 +165,15 @@ public class ArticleServiceImpl implements ArticleService {
      * @return
      */
     @Override
-    public ArticleDetailVO getArticleDetail(Long articleId) {
-        String key = RedisConstant.ARTICLE_DETAIL_KEY + articleId;
-        String commentKey = RedisConstant.COMMENT_PREVIEW_KEY+articleId;
-        String viewCountKey = RedisConstant.ARTICLE_VIEW_COUNT_KEY+articleId;
+    public ArticleDetailVO getPublishedArticleDetail(Long articleId) {
+        String key = RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + articleId;
+        String commentKey = RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + articleId;
         //从redis中查询数据
         String cacheJson=stringRedisTemplate.opsForValue().get(key);
         if(!(cacheJson==null||cacheJson.isBlank())){
         ArticleDetailVO articleDetailVO = JSONUtil.toBean(cacheJson, ArticleDetailVO.class);
             List<CommentTreeVO> allComments;
-            String cacheComment=stringRedisTemplate.opsForValue().get(commentKey);
+            String cacheComment = stringRedisTemplate.opsForValue().get(commentKey);
             if(!(cacheComment==null||cacheComment.isBlank())){
                 allComments= JSONUtil.toList(cacheComment, CommentTreeVO.class);}
             else {
@@ -185,7 +183,7 @@ public class ArticleServiceImpl implements ArticleService {
                 stringRedisTemplate.opsForValue().set(commentKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
             }
             articleDetailVO.setComments(allComments);
-            stringRedisTemplate.opsForValue().increment(viewCountKey);
+            recordPublishedArticleView(articleId);
             return articleDetailVO;
         }
         //如果为空,尝试获取互斥锁,如果获取成功,再次查询redis,如果有数据,直接返回
@@ -216,14 +214,14 @@ public class ArticleServiceImpl implements ArticleService {
         List<CommentTreeVO> allComments = commentService.buildCommentTreeVOs(rootComments);
         articleDetailVO.setComments(allComments);
         stringRedisTemplate.opsForValue().set(commentKey,JSONUtil.toJsonStr(allComments), RedisConstant.ARTICLE_DETAIL_TTL, TimeUnit.MINUTES);
-        stringRedisTemplate.opsForValue().increment(viewCountKey);
+        recordPublishedArticleView(articleId);
         return articleDetailVO;
     }
 
     @Override
     public ArticleDetailVO getArticleDetailOneCache(Long articleId) {
-        String key = RedisConstant.ARTICLE_DETAIL_KEY +":onecache"+ articleId;
-        //String commenKey = RedisConstant.COMMENT_PREVIEW_KEY+articleId;
+        String key = RedisConstant.ARTICLE_DETAIL_KEY_PREFIX +":onecache"+ articleId;
+        //String commenKey = RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + articleId;
         //从redis中查询数据
         String cacheJson=stringRedisTemplate.opsForValue().get(key);
         if(!(cacheJson==null||cacheJson.isBlank())){
@@ -320,8 +318,8 @@ public class ArticleServiceImpl implements ArticleService {
         article.setStatus(currentStatus);
         articleMapper.update(article);
         replaceArticleTags(article.getId(), tagIds);
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + article.getId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + article.getId());
     }
 
     /**
@@ -346,8 +344,8 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         commentMapper.updateStatus(articleId, mapArticleStatusToCommentStatus(ArticleConstant.STATUS_DELETED));
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + article.getId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + article.getId());
     }
 
     @Transactional
@@ -379,8 +377,8 @@ public class ArticleServiceImpl implements ArticleService {
             throw new BusinessException("文章状态更新失败");
         }
         commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + article.getId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + article.getId());
     }
 
     @Transactional
@@ -413,8 +411,8 @@ public class ArticleServiceImpl implements ArticleService {
             throw new BusinessException("文章状态更新失败");
         }
         commentMapper.updateStatus(id, mapArticleStatusToCommentStatus(newStatus));
-        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY + article.getId());
-        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY + article.getId());
+        stringRedisTemplate.delete(RedisConstant.ARTICLE_DETAIL_KEY_PREFIX + article.getId());
+        stringRedisTemplate.delete(RedisConstant.COMMENT_PREVIEW_KEY_PREFIX + article.getId());
     }
 
 
@@ -641,6 +639,11 @@ public class ArticleServiceImpl implements ArticleService {
         }
         BeanUtils.copyProperties(articleStats, articleStatsVO);
         return articleStatsVO;
+    }
+
+    private void recordPublishedArticleView(Long articleId) {
+        stringRedisTemplate.opsForValue()
+                .increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + articleId);
     }
 
 

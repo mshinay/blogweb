@@ -127,7 +127,7 @@ class ApiStandardizationControllerTests {
     @Test
     void standardPathsShouldBeReachable() throws Exception {
         when(articleService.articleList(any(ArticleListDTO.class))).thenReturn(new PageResult());
-        when(articleService.getArticleDetail(1L)).thenReturn(new ArticleDetailVO());
+        when(articleService.getPublishedArticleDetail(1L)).thenReturn(new ArticleDetailVO());
         when(articleService.uploadArticle(any(ArticleUploadDTO.class))).thenReturn(1L);
         when(articleService.articleAdminList(any(ArticleAdminListDTO.class))).thenReturn(new PageResult());
         when(commentService.commentList(any(CommentListDTO.class))).thenReturn(new PageResult());
@@ -201,7 +201,7 @@ class ApiStandardizationControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value("https://cdn.example.com/file.png"));
 
-        verify(articleService).getArticleDetail(1L);
+        verify(articleService).getPublishedArticleDetail(1L);
         verify(articleService).uploadArticle(any(ArticleUploadDTO.class));
         verify(articleService).editArticle(any(ArticleEditDTO.class));
         verify(articleService).editStatus(1L);
@@ -297,7 +297,7 @@ class ApiStandardizationControllerTests {
                 .andExpect(status().isNotFound());
 
         verify(articleService, never()).uploadArticle(any(ArticleUploadDTO.class));
-        verify(articleService, never()).getArticleDetail(any(Long.class));
+        verify(articleService, never()).getPublishedArticleDetail(any(Long.class));
         verify(articleService, never()).editArticle(any(ArticleEditDTO.class));
         verify(articleService, never()).editStatus(any(Long.class));
         verify(articleService, never()).articleAdminList(any(ArticleAdminListDTO.class));
@@ -363,7 +363,7 @@ class ApiStandardizationControllerTests {
 
     @Test
     void publicStandardPathsShouldRemainAccessibleWithoutToken() throws Exception {
-        when(articleService.getArticleDetail(1L)).thenReturn(new ArticleDetailVO());
+        when(articleService.getPublishedArticleDetail(1L)).thenReturn(new ArticleDetailVO());
         when(commentService.commentList(any(CommentListDTO.class))).thenReturn(new PageResult());
         when(userService.userInfo(1L)).thenReturn(User.builder().id(1L).username("zhangsan").build());
 
@@ -374,7 +374,7 @@ class ApiStandardizationControllerTests {
         publicRouteMockMvc.perform(get("/users/1"))
                 .andExpect(status().isOk());
 
-        verify(articleService).getArticleDetail(1L);
+        verify(articleService).getPublishedArticleDetail(1L);
         verify(commentService).commentList(any(CommentListDTO.class));
         verify(userService).userInfo(1L);
     }

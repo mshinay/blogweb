@@ -19,20 +19,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static java.util.List.of;
-
 @Component
 @Slf4j
-public class ArticleStatusTask {
+public class ArticleViewCountSyncTask {
     @Autowired
     ArticleStatsMapper articleStatsMapper;
 
     @Resource
     StringRedisTemplate stringRedisTemplate;
 
-/*    @Scheduled(fixedRate = 60000)
-    public void autoSaveViewCounts(){
-        log.info("定时任务执行，保存文章浏览量");
+    @Scheduled(fixedRate = 60000)
+    public void syncViewCountsToDatabase() {
+        log.info("定时任务执行，同步文章浏览量增量");
         Set<String> viewKeys = scanViewKeys();
         if(viewKeys==null||viewKeys.isEmpty()){return;}
         List<String> keyList = new ArrayList<>(viewKeys);
@@ -40,7 +38,7 @@ public class ArticleStatusTask {
         List<ArticleStats> articleStatsList = new ArrayList<>();
         for (int i = 0; i < keyList.size(); i++)  {
             if(keyList.get(i)==null|| keyList.get(i).isBlank()){continue;}
-            String articleIdStr = keyList.get(i).substring(RedisConstant.ARTICLE_VIEW_COUNT_KEY.length());
+            String articleIdStr = keyList.get(i).substring(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX.length());
             Long id = Long.parseLong(articleIdStr);
 
             if(viewCounts.get(i)==null||viewCounts.get(i).isBlank()){continue;}
@@ -53,9 +51,9 @@ public class ArticleStatusTask {
         if (articleStatsList.isEmpty()) {
             return;
         }
-        articleStatsMapper.articleStatsBatchUpsert(articleStatsList);
+        articleStatsMapper.batchIncrementViewCount(articleStatsList);
         stringRedisTemplate.delete(viewKeys);
-    }*/
+    }
 
     public Set<String> scanViewKeys() {
         return stringRedisTemplate.execute((RedisCallback<Set<String>>) connection -> {
@@ -63,7 +61,7 @@ public class ArticleStatusTask {
 
             Cursor<byte[]> cursor = connection.scan(
                     ScanOptions.scanOptions()
-                            .match("blog:article:view:*")
+                            .match(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + "*")
                             .count(100)
                             .build()
             );

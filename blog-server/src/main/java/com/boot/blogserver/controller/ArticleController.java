@@ -59,7 +59,7 @@ public class ArticleController {
     public Result<ArticleDetailVO> showArticle(@Positive(message = "文章ID必须大于0") @PathVariable Long articleId) {
         log.info("查询文章{}", articleId);
         //ArticleDetailVO articleDetailVO = articleService.getArticleDetailWithoutRedis(articleId);
-        ArticleDetailVO articleDetailVO = articleService.getArticleDetail(articleId);
+        ArticleDetailVO articleDetailVO = articleService.getPublishedArticleDetail(articleId);
         //ArticleDetailVO articleDetailVO = articleService.getArticleDetailOneCache(articleId);
        return Result.success(articleDetailVO);
     }
