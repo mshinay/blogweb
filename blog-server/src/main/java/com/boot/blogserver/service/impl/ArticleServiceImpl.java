@@ -642,8 +642,8 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     private void recordPublishedArticleView(Long articleId) {
-        stringRedisTemplate.opsForValue()
-                .increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + articleId);
+        stringRedisTemplate.opsForHash()
+                .increment(RedisConstant.ARTICLE_VIEW_COUNT_HASH_KEY, articleId.toString(), 1L);
     }
 
 

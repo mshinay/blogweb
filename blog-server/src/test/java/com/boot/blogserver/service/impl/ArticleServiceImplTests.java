@@ -35,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -68,6 +69,8 @@ class ArticleServiceImplTests {
     private TagMapper tagMapper;
     @Mock
     private StringRedisTemplate stringRedisTemplate;
+    @Mock
+    private HashOperations<String, Object, Object> hashOperations;
 
     @InjectMocks
     private ArticleServiceImpl articleService;
@@ -351,7 +354,7 @@ class ArticleServiceImplTests {
         assertEquals("root", detail.getComments().get(0).getComment().getContent());
         assertEquals(1, detail.getComments().get(0).getChildren().size());
         assertEquals("reply-user", detail.getComments().get(0).getChildren().get(0).getReplyUserName());
-        verify(valueOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + 1L);
+        verify(hashOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_HASH_KEY, "1", 1L);
     }
 
     @Test
@@ -499,7 +502,7 @@ class ArticleServiceImplTests {
         assertEquals("666", result.getTitle());
         assertNotNull(result.getComments());
         assertEquals(1, result.getComments().size());
-        verify(valueOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + articleId);
+        verify(hashOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_HASH_KEY, articleId.toString(), 1L);
 
         verify(articleMapper, never()).getPublishedById(anyLong());
         verify(categoryMapper, never()).getById(anyLong());
@@ -530,7 +533,7 @@ class ArticleServiceImplTests {
 
         verify(articleMapper).getPublishedById(anyLong());
         verify(valueOperations).set(eq(key), anyString(), anyLong(), any(TimeUnit.class));
-        verify(valueOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_STRING_KEY_PREFIX + articleId);
+        verify(hashOperations).increment(RedisConstant.ARTICLE_VIEW_COUNT_HASH_KEY, articleId.toString(), 1L);
 
     }
 
@@ -566,5 +569,6 @@ class ArticleServiceImplTests {
     @BeforeEach
     void setUp() {
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
     }
 }
