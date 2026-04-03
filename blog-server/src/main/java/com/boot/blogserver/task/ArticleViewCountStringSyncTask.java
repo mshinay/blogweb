@@ -2,6 +2,7 @@ package com.boot.blogserver.task;
 
 import com.blog.constant.RedisConstant;
 import com.blog.entry.ArticleStats;
+import com.blog.utils.ArticleViewSyncLogUtil;
 import com.boot.blogserver.mapper.ArticleStatsMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -34,45 +35,89 @@ public class ArticleViewCountStringSyncTask {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    @Scheduled(fixedRate = 60000)
+    //@Scheduled(fixedRate = 60000)
     public void syncViewCountsToDatabase() {
-        log.info("定时任务执行，同步文章浏览量增量（String 多 key 对照方案）");
-        Set<String> viewKeys = scanViewKeys();
-        if (viewKeys == null || viewKeys.isEmpty()) {
-            return;
-        }
+        ArticleViewSyncLogUtil.SyncMetrics metrics = ArticleViewSyncLogUtil.start(ArticleViewSyncLogUtil.SCHEME_STRING);
+        ArticleViewSyncLogUtil.logTaskStart(log, metrics);
+        String outcome = "success";
+        try {
+            long redisStartNanoTime = System.nanoTime();
+            Set<String> viewKeys = scanViewKeys();
+            int redisCandidateCount = viewKeys == null ? 0 : viewKeys.size();
+            metrics.markRedisPrepared(redisCandidateCount, redisStartNanoTime);
+            ArticleViewSyncLogUtil.logRedisPrepared(log, metrics);
 
-        List<String> keyList = new ArrayList<>(viewKeys);
-        List<String> viewCounts = stringRedisTemplate.execute(READ_AND_DELETE_SCRIPT, keyList);
-        if (viewCounts == null || viewCounts.isEmpty()) {
-            return;
-        }
-
-        List<ArticleStats> articleStatsList = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-        for (int i = 0; i < keyList.size() && i < viewCounts.size(); i++) {
-            String key = keyList.get(i);
-            String viewCount = viewCounts.get(i);
-            if (key == null || key.isBlank() || viewCount == null || viewCount.isBlank()) {
-                continue;
+            if (viewKeys == null || viewKeys.isEmpty()) {
+                ArticleViewSyncLogUtil.logLuaDone(log, metrics);
+                ArticleViewSyncLogUtil.logJavaDone(log, metrics);
+                ArticleViewSyncLogUtil.logDbDone(log, metrics);
+                outcome = "no_redis_candidate";
+                return;
             }
 
-            Long articleId = parseArticleIdFromKey(key);
-            if (articleId == null) {
-                continue;
+            List<String> keyList = new ArrayList<>(viewKeys);
+            long luaStartNanoTime = System.nanoTime();
+            List<String> viewCounts = stringRedisTemplate.execute(READ_AND_DELETE_SCRIPT, keyList);
+            int luaResultCount = viewCounts == null ? 0 : viewCounts.size();
+            metrics.markLuaDone(luaResultCount, luaStartNanoTime);
+            ArticleViewSyncLogUtil.logLuaDone(log, metrics);
+            if (viewCounts == null || viewCounts.isEmpty()) {
+                ArticleViewSyncLogUtil.logJavaDone(log, metrics);
+                ArticleViewSyncLogUtil.logDbDone(log, metrics);
+                outcome = "lua_empty";
+                return;
             }
 
-            ArticleStats articleStats = new ArticleStats();
-            articleStats.setArticleId(articleId);
-            articleStats.setViewCount(Long.parseLong(viewCount));
-            articleStats.setUpdatedTime(now);
-            articleStatsList.add(articleStats);
-        }
+            List<ArticleStats> articleStatsList = new ArrayList<>();
+            long javaStartNanoTime = System.nanoTime();
+            LocalDateTime now = LocalDateTime.now();
+            long totalViewCount = 0L;
+            for (int i = 0; i < keyList.size() && i < viewCounts.size(); i++) {
+                String key = keyList.get(i);
+                String viewCount = viewCounts.get(i);
+                if (key == null || key.isBlank() || viewCount == null || viewCount.isBlank()) {
+                    continue;
+                }
 
-        if (articleStatsList.isEmpty()) {
-            return;
+                Long articleId = parseArticleIdFromKey(key);
+                if (articleId == null) {
+                    continue;
+                }
+                long parsedViewCount = parseViewCount(key, viewCount);
+
+                ArticleStats articleStats = new ArticleStats();
+                articleStats.setArticleId(articleId);
+                articleStats.setViewCount(parsedViewCount);
+                articleStats.setUpdatedTime(now);
+                articleStatsList.add(articleStats);
+                totalViewCount += parsedViewCount;
+            }
+            metrics.markJavaDone(articleStatsList.size(), totalViewCount, javaStartNanoTime);
+            ArticleViewSyncLogUtil.logJavaDone(log, metrics);
+
+            if (articleStatsList.isEmpty()) {
+                ArticleViewSyncLogUtil.logDbDone(log, metrics);
+                outcome = "java_empty";
+                return;
+            }
+            long dbStartNanoTime = System.nanoTime();
+            //articleStatsMapper.batchIncrementViewCount(articleStatsList);
+            metrics.markDbDone(dbStartNanoTime);
+            ArticleViewSyncLogUtil.logDbDone(log, metrics);
+        } catch (RuntimeException ex) {
+            outcome = "failed";
+            log.error(
+                    "article_view_sync stage=failed scheme={} errorType={} errorMessage={} totalElapsedMs={}",
+                    ArticleViewSyncLogUtil.SCHEME_STRING,
+                    ex.getClass().getSimpleName(),
+                    ex.getMessage(),
+                    metrics.getTotalElapsedMs(),
+                    ex
+            );
+            throw ex;
+        } finally {
+            ArticleViewSyncLogUtil.logFinish(log, metrics, outcome);
         }
-        articleStatsMapper.batchIncrementViewCount(articleStatsList);
     }
 
     public Set<String> scanViewKeys() {
@@ -100,8 +145,22 @@ public class ArticleViewCountStringSyncTask {
         try {
             return Long.parseLong(articleIdStr);
         } catch (NumberFormatException ex) {
-            log.warn("String 浏览量同步解析 articleId 失败, key={}", key);
+            log.warn("article_view_sync stage=java_parse_failed scheme={} key={}", ArticleViewSyncLogUtil.SCHEME_STRING, key);
             return null;
+        }
+    }
+
+    private long parseViewCount(String key, String viewCount) {
+        try {
+            return Long.parseLong(viewCount);
+        } catch (NumberFormatException ex) {
+            log.error(
+                    "article_view_sync stage=java_parse_failed scheme={} key={} rawViewCount={}",
+                    ArticleViewSyncLogUtil.SCHEME_STRING,
+                    key,
+                    viewCount
+            );
+            throw ex;
         }
     }
 
